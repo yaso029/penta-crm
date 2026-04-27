@@ -1,0 +1,280 @@
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy.orm import Session
+from pydantic import BaseModel
+from typing import Optional, List
+from datetime import datetime
+from backend.database.db import get_db
+from backend.database.models import User, Lead, Activity
+from backend.services.auth_service import get_current_user, require_admin, require_admin_or_team_leader
+
+router = APIRouter(prefix="/api/leads", tags=["leads"])
+
+
+class CreateLeadRequest(BaseModel):
+    full_name: str
+    phone: str
+    email: Optional[str] = None
+    source: Optional[str] = None
+    budget: Optional[str] = None
+    property_type: Optional[str] = None
+    preferred_area: Optional[str] = None
+    notes: Optional[str] = None
+    assigned_to: Optional[int] = None
+
+
+class UpdateLeadRequest(BaseModel):
+    full_name: Optional[str] = None
+    phone: Optional[str] = None
+    email: Optional[str] = None
+    source: Optional[str] = None
+    budget: Optional[str] = None
+    property_type: Optional[str] = None
+    preferred_area: Optional[str] = None
+    notes: Optional[str] = None
+    stage: Optional[str] = None
+    assigned_to: Optional[int] = None
+
+
+class StageUpdateRequest(BaseModel):
+    stage: str
+
+
+class AssignRequest(BaseModel):
+    broker_id: int
+
+
+class ActivityRequest(BaseModel):
+    type: str
+    content: str
+
+
+def activity_to_dict(a: Activity):
+    return {
+        "id": a.id,
+        "lead_id": a.lead_id,
+        "user_id": a.user_id,
+        "user_name": a.user.full_name if a.user else None,
+        "type": a.type,
+        "content": a.content,
+        "created_at": a.created_at.isoformat() if a.created_at else None,
+    }
+
+
+def lead_to_dict(lead: Lead, include_activities: bool = False):
+    data = {
+        "id": lead.id,
+        "full_name": lead.full_name,
+        "phone": lead.phone,
+        "email": lead.email,
+        "source": lead.source,
+        "budget": lead.budget,
+        "property_type": lead.property_type,
+        "preferred_area": lead.preferred_area,
+        "notes": lead.notes,
+        "stage": lead.stage,
+        "assigned_to": lead.assigned_to,
+        "assigned_to_name": lead.assignee.full_name if lead.assignee else None,
+        "created_by": lead.created_by,
+        "created_by_name": lead.creator.full_name if lead.creator else None,
+        "created_at": lead.created_at.isoformat() if lead.created_at else None,
+        "updated_at": lead.updated_at.isoformat() if lead.updated_at else None,
+    }
+    if include_activities:
+        data["activities"] = [activity_to_dict(a) for a in sorted(lead.activities, key=lambda x: x.created_at, reverse=True)]
+    return data
+
+
+def get_leads_query(current_user: User, db: Session):
+    query = db.query(Lead)
+    if current_user.role == "admin":
+        return query
+    elif current_user.role == "team_leader":
+        broker_ids = [u.id for u in db.query(User).filter(User.team_leader_id == current_user.id).all()]
+        visible_ids = broker_ids + [current_user.id]
+        return query.filter(
+            (Lead.assigned_to.in_(visible_ids)) | (Lead.created_by == current_user.id)
+        )
+    else:
+        return query.filter(Lead.assigned_to == current_user.id)
+
+
+@router.get("")
+def list_leads(
+    stage: Optional[str] = None,
+    search: Optional[str] = None,
+    assigned_to: Optional[int] = None,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    query = get_leads_query(current_user, db)
+    if stage:
+        query = query.filter(Lead.stage == stage)
+    if assigned_to:
+        query = query.filter(Lead.assigned_to == assigned_to)
+    if search:
+        like = f"%{search}%"
+        query = query.filter(
+            Lead.full_name.ilike(like) | Lead.phone.ilike(like) | Lead.email.ilike(like)
+        )
+    leads = query.order_by(Lead.updated_at.desc()).all()
+    return [lead_to_dict(l) for l in leads]
+
+
+@router.get("/kanban")
+def kanban_board(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    stages = ["new_lead", "contacted", "follow_up", "no_answer", "not_interested", "wrong_number", "junk"]
+    query = get_leads_query(current_user, db)
+    leads = query.order_by(Lead.updated_at.desc()).all()
+    board = {stage: [] for stage in stages}
+    for lead in leads:
+        stage = lead.stage if lead.stage in board else "new_lead"
+        board[stage].append(lead_to_dict(lead))
+    return board
+
+
+@router.get("/{lead_id}")
+def get_lead(lead_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    query = get_leads_query(current_user, db)
+    lead = query.filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    return lead_to_dict(lead, include_activities=True)
+
+
+@router.post("")
+def create_lead(req: CreateLeadRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    assigned = req.assigned_to or current_user.id
+    lead = Lead(
+        full_name=req.full_name,
+        phone=req.phone,
+        email=req.email,
+        source=req.source,
+        budget=req.budget,
+        property_type=req.property_type,
+        preferred_area=req.preferred_area,
+        notes=req.notes,
+        stage="new_lead",
+        assigned_to=assigned,
+        created_by=current_user.id,
+    )
+    db.add(lead)
+    db.flush()
+    activity = Activity(
+        lead_id=lead.id,
+        user_id=current_user.id,
+        type="note",
+        content=f"Lead created by {current_user.full_name}",
+    )
+    db.add(activity)
+    db.commit()
+    db.refresh(lead)
+    return lead_to_dict(lead)
+
+
+@router.put("/{lead_id}")
+def update_lead(lead_id: int, req: UpdateLeadRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    query = get_leads_query(current_user, db)
+    lead = query.filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    fields = ["full_name", "phone", "email", "source", "budget", "property_type", "preferred_area", "notes", "stage", "assigned_to"]
+    for field in fields:
+        val = getattr(req, field)
+        if val is not None:
+            setattr(lead, field, val)
+    lead.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(lead)
+    return lead_to_dict(lead)
+
+
+@router.patch("/{lead_id}/stage")
+def update_stage(lead_id: int, req: StageUpdateRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    valid_stages = ["new_lead", "contacted", "follow_up", "no_answer", "not_interested", "wrong_number", "junk"]
+    if req.stage not in valid_stages:
+        raise HTTPException(status_code=400, detail="Invalid stage")
+    query = get_leads_query(current_user, db)
+    lead = query.filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    old_stage = lead.stage
+    lead.stage = req.stage
+    lead.updated_at = datetime.utcnow()
+    activity = Activity(
+        lead_id=lead.id,
+        user_id=current_user.id,
+        type="stage_change",
+        content=f"Stage changed from '{old_stage}' to '{req.stage}'",
+    )
+    db.add(activity)
+    db.commit()
+    db.refresh(lead)
+    return lead_to_dict(lead)
+
+
+@router.patch("/{lead_id}/assign")
+def assign_lead(lead_id: int, req: AssignRequest, current_user: User = Depends(require_admin_or_team_leader), db: Session = Depends(get_db)):
+    broker = db.query(User).filter(User.id == req.broker_id, User.is_active == True).first()
+    if not broker:
+        raise HTTPException(status_code=404, detail="Broker not found")
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    old_assignee = lead.assignee.full_name if lead.assignee else "unassigned"
+    lead.assigned_to = req.broker_id
+    lead.updated_at = datetime.utcnow()
+    activity = Activity(
+        lead_id=lead.id,
+        user_id=current_user.id,
+        type="note",
+        content=f"Lead reassigned from {old_assignee} to {broker.full_name}",
+    )
+    db.add(activity)
+    db.commit()
+    db.refresh(lead)
+    return lead_to_dict(lead)
+
+
+@router.post("/{lead_id}/activities")
+def add_activity(lead_id: int, req: ActivityRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    query = get_leads_query(current_user, db)
+    lead = query.filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    valid_types = ["call", "email", "meeting", "viewing", "note", "whatsapp"]
+    if req.type not in valid_types:
+        raise HTTPException(status_code=400, detail="Invalid activity type")
+    activity = Activity(
+        lead_id=lead_id,
+        user_id=current_user.id,
+        type=req.type,
+        content=req.content,
+    )
+    db.add(activity)
+    lead.updated_at = datetime.utcnow()
+    db.commit()
+    db.refresh(activity)
+    return activity_to_dict(activity)
+
+
+@router.get("/{lead_id}/activities")
+def get_activities(lead_id: int, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    query = get_leads_query(current_user, db)
+    lead = query.filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    activities = sorted(lead.activities, key=lambda x: x.created_at, reverse=True)
+    return [activity_to_dict(a) for a in activities]
+
+
+@router.delete("/{lead_id}")
+def delete_lead(lead_id: int, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    lead = db.query(Lead).filter(Lead.id == lead_id).first()
+    if not lead:
+        raise HTTPException(status_code=404, detail="Lead not found")
+    db.delete(lead)
+    db.commit()
+    return {"ok": True}
