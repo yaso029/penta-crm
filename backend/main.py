@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from backend.database.db import engine, Base
@@ -5,9 +8,10 @@ from backend.database import models
 from backend.database.db import SessionLocal
 from backend.services.auth_service import hash_password
 from backend.api import auth, users, leads, webhook, notifications, dashboard, import_leads
+from backend.api import partners, whatsapp_routes, email_routes, commissions, partnerships_dashboard
 import os
 
-app = FastAPI(title="Pentad CRM API", version="1.0.0")
+app = FastAPI(title="Penta CRM API", version="2.0.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -17,6 +21,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# CRM routes
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(leads.router)
@@ -25,11 +30,17 @@ app.include_router(notifications.router)
 app.include_router(dashboard.router)
 app.include_router(import_leads.router)
 
+# Partnerships routes
+app.include_router(partners.router)
+app.include_router(whatsapp_routes.router)
+app.include_router(email_routes.router)
+app.include_router(commissions.router)
+app.include_router(partnerships_dashboard.router)
+
 
 def seed_admin():
     db = SessionLocal()
     try:
-        # Update old default admin if it exists
         old = db.query(models.User).filter(models.User.email == "admin@pentadcrm.com").first()
         if old:
             old.full_name = "Yaso"
@@ -37,7 +48,6 @@ def seed_admin():
             old.password_hash = hash_password("Yaso@123")
             db.commit()
             return
-        # Create if no admin exists yet
         existing = db.query(models.User).filter(models.User.email == "yaso@pentacrm.com").first()
         if not existing:
             admin = models.User(
@@ -61,4 +71,4 @@ def startup():
 
 @app.get("/")
 def root():
-    return {"status": "Pentad CRM API running"}
+    return {"status": "Penta CRM API running", "version": "2.0.0"}

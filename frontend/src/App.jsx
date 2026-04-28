@@ -1,12 +1,20 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './AuthContext';
 import LoginPage from './pages/LoginPage';
+import Landing from './pages/Landing';
 import Layout from './components/Layout';
+import PartnershipsLayout from './components/PartnershipsLayout';
 import DashboardPage from './pages/DashboardPage';
 import KanbanPage from './pages/KanbanPage';
 import LeadsPage from './pages/LeadsPage';
 import LeadDetailPage from './pages/LeadDetailPage';
 import UsersPage from './pages/UsersPage';
+import PartnershipsDashboard from './pages/partnerships/Dashboard';
+import Partners from './pages/partnerships/Partners';
+import Outreach from './pages/partnerships/Outreach';
+import Templates from './pages/partnerships/Templates';
+import Replies from './pages/partnerships/Replies';
+import Commissions from './pages/partnerships/Commissions';
 
 function PrivateRoute({ children, roles }) {
   const { user } = useAuth();
@@ -21,7 +29,12 @@ export default function App() {
   return (
     <Routes>
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
-      <Route path="/" element={<PrivateRoute><Layout /></PrivateRoute>}>
+
+      {/* Landing — module selector */}
+      <Route path="/" element={<PrivateRoute><Landing /></PrivateRoute>} />
+
+      {/* CRM module */}
+      <Route path="/crm" element={<PrivateRoute><Layout /></PrivateRoute>}>
         <Route index element={<DashboardPage />} />
         <Route path="kanban" element={<KanbanPage />} />
         <Route path="leads" element={<LeadsPage />} />
@@ -32,6 +45,21 @@ export default function App() {
           </PrivateRoute>
         } />
       </Route>
+
+      {/* Partnerships module — admin only */}
+      <Route path="/partnerships" element={
+        <PrivateRoute roles={['admin']}>
+          <PartnershipsLayout />
+        </PrivateRoute>
+      }>
+        <Route index element={<PartnershipsDashboard />} />
+        <Route path="partners" element={<Partners />} />
+        <Route path="outreach" element={<Outreach />} />
+        <Route path="templates" element={<Templates />} />
+        <Route path="replies" element={<Replies />} />
+        <Route path="commissions" element={<Commissions />} />
+      </Route>
+
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );

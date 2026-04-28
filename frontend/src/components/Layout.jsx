@@ -67,10 +67,10 @@ export default function Layout() {
   };
 
   const navItems = [
-    { to: '/', label: 'Dashboard', icon: '▦', exact: true },
-    { to: '/kanban', label: 'Pipeline', icon: '◫' },
-    { to: '/leads', label: 'All Leads', icon: '☰' },
-    ...(user?.role === 'admin' ? [{ to: '/users', label: 'Users', icon: '◎' }] : []),
+    { to: '/crm', label: 'Dashboard', icon: '▦', exact: true },
+    { to: '/crm/kanban', label: 'Pipeline', icon: '◫' },
+    { to: '/crm/leads', label: 'All Leads', icon: '☰' },
+    ...(user?.role === 'admin' ? [{ to: '/crm/users', label: 'Users', icon: '◎' }] : []),
   ];
 
   return (
@@ -114,14 +114,14 @@ export default function Layout() {
             {user?.full_name}
           </div>
           <button
-            onClick={handleLogout}
+            onClick={() => navigate('/')}
             style={{
               width: '100%', padding: '9px', background: 'rgba(255,255,255,0.08)',
               border: 'none', borderRadius: 7, color: 'rgba(255,255,255,0.7)',
               fontSize: 13, cursor: 'pointer',
             }}
           >
-            Sign Out
+            ← Home
           </button>
         </div>
       </aside>
