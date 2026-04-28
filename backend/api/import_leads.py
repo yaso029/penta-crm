@@ -58,6 +58,8 @@ def parse_rows(headers, rows):
 
 
 def read_file(content: bytes, filename: str):
+    if not filename:
+        raise HTTPException(status_code=400, detail="No filename detected")
     filename = filename.lower()
 
     if filename.endswith(".csv"):
@@ -106,18 +108,22 @@ async def preview_import(
     file: UploadFile = File(...),
     current_user: User = Depends(get_current_user),
 ):
-    content = await file.read()
-    headers, rows = read_file(content, file.filename)
-    leads, unrecognized = parse_rows(headers, rows)
-
-    return {
-        "headers": headers,
-        "column_mapping": {h: detect_column(str(h)) for h in headers},
-        "unrecognized_columns": unrecognized,
-        "preview": leads[:5],
-        "total_rows": len(rows),
-        "importable_rows": len(leads),
-    }
+    try:
+        content = await file.read()
+        headers, rows = read_file(content, file.filename or "")
+        leads, unrecognized = parse_rows(headers, rows)
+        return {
+            "headers": headers,
+            "column_mapping": {h: detect_column(str(h)) for h in headers},
+            "unrecognized_columns": unrecognized,
+            "preview": leads[:5],
+            "total_rows": len(rows),
+            "importable_rows": len(leads),
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Error reading file: {str(e)}")
 
 
 @router.post("")
@@ -126,8 +132,12 @@ async def import_leads(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    content = await file.read()
-    headers, rows = read_file(content, file.filename)
+    try:
+      content = await file.read()
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Could not read uploaded file: {str(e)}")
+
+    headers, rows = read_file(content, file.filename or "")
     leads_data, _ = parse_rows(headers, rows)
 
     created = 0
