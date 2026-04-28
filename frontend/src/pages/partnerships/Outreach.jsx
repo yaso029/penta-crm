@@ -161,15 +161,20 @@ export default function Outreach() {
             </div>
           )}
 
+          {!form.selected_partners.length && (
+            <div style={{ background: '#fef3c7', borderRadius: 7, padding: '8px 12px', fontSize: 12, color: '#92400e', marginBottom: 10, fontWeight: 500 }}>
+              ← Select recipients from the panel on the right first
+            </div>
+          )}
           <button
             onClick={doSend}
             disabled={sending || !form.selected_partners.length || dailyCount.count >= dailyCount.limit}
             style={{
               width: '100%', padding: '12px', background: NAVY, color: '#fff', border: 'none',
-              borderRadius: 8, cursor: 'pointer', fontSize: 14, fontWeight: 700,
-              opacity: sending || !form.selected_partners.length ? 0.6 : 1,
+              borderRadius: 8, cursor: !form.selected_partners.length ? 'not-allowed' : 'pointer', fontSize: 14, fontWeight: 700,
+              opacity: sending || !form.selected_partners.length ? 0.5 : 1,
             }}>
-            {sending ? 'Sending...' : `Send to ${form.selected_partners.length} Partner${form.selected_partners.length !== 1 ? 's' : ''}`}
+            {sending ? 'Sending...' : form.selected_partners.length ? `Send to ${form.selected_partners.length} Partner${form.selected_partners.length !== 1 ? 's' : ''}` : 'No recipients selected'}
           </button>
         </div>
 

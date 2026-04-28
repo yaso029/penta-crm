@@ -64,9 +64,6 @@ def daily_count(current_user=Depends(require_admin), db: Session = Depends(get_d
 
 @router.post("/send")
 def send_emails(req: SendEmailRequest, current_user=Depends(require_admin), db: Session = Depends(get_db)):
-    if not whatsapp_service.is_within_sending_hours():
-        raise HTTPException(status_code=400, detail="Outside sending hours (9 AM – 6 PM UAE time)")
-
     today = datetime.now(UAE_TZ).date()
     sent_today = db.query(OutreachMessage).filter(
         OutreachMessage.channel == "email",
@@ -113,6 +110,10 @@ def send_emails(req: SendEmailRequest, current_user=Depends(require_admin), db: 
 
         result = email_service.send_email(partner.email, subject, body)
 
+        if "error" in result:
+            results.append({"partner_id": pid, "error": result["error"]})
+            continue
+
         msg = OutreachMessage(
             partner_id=partner.id,
             channel="email",
@@ -127,7 +128,11 @@ def send_emails(req: SendEmailRequest, current_user=Depends(require_admin), db: 
         results.append({"partner_id": pid, "ok": True})
 
     db.commit()
-    return {"results": results, "sent": len([r for r in results if r.get("ok")])}
+    errors = [r for r in results if r.get("error")]
+    sent_count = len([r for r in results if r.get("ok")])
+    if sent_count == 0 and errors:
+        raise HTTPException(status_code=400, detail=errors[0]["error"])
+    return {"results": results, "sent": sent_count}
 
 
 @router.get("/templates")
