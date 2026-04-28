@@ -4,7 +4,7 @@ from backend.database.db import engine, Base
 from backend.database import models
 from backend.database.db import SessionLocal
 from backend.services.auth_service import hash_password
-from backend.api import auth, users, leads, webhook, notifications, dashboard
+from backend.api import auth, users, leads, webhook, notifications, dashboard, import_leads
 import os
 
 app = FastAPI(title="Pentad CRM API", version="1.0.0")
@@ -23,6 +23,7 @@ app.include_router(leads.router)
 app.include_router(webhook.router)
 app.include_router(notifications.router)
 app.include_router(dashboard.router)
+app.include_router(import_leads.router)
 
 
 def seed_admin():

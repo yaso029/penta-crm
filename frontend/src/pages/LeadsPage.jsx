@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../AuthContext';
+import ImportModal from '../components/ImportModal';
 
 const NAVY = '#0A2342';
 const GOLD = '#C9A84C';
@@ -98,6 +99,7 @@ export default function LeadsPage() {
   const [search, setSearch] = useState('');
   const [stageFilter, setStageFilter] = useState('');
   const [showAdd, setShowAdd] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [teamMembers, setTeamMembers] = useState([]);
 
   useEffect(() => {
@@ -133,12 +135,20 @@ export default function LeadsPage() {
           <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e' }}>All Leads</h1>
           <p style={{ color: '#888', fontSize: 14, marginTop: 4 }}>{leads.length} leads total</p>
         </div>
-        <button
-          onClick={() => setShowAdd(true)}
-          style={{ padding: '10px 20px', background: NAVY, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}
-        >
-          + Add Lead
-        </button>
+        <div style={{ display: 'flex', gap: 10 }}>
+          <button
+            onClick={() => setShowImport(true)}
+            style={{ padding: '10px 20px', background: '#fff', color: NAVY, border: `1.5px solid ${NAVY}`, borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}
+          >
+            Import CSV / Excel
+          </button>
+          <button
+            onClick={() => setShowAdd(true)}
+            style={{ padding: '10px 20px', background: NAVY, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}
+          >
+            + Add Lead
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -208,6 +218,13 @@ export default function LeadsPage() {
           </tbody>
         </table>
       </div>
+
+      {showImport && (
+        <ImportModal
+          onClose={() => setShowImport(false)}
+          onImported={fetchLeads}
+        />
+      )}
 
       {showAdd && (
         <AddLeadModal
