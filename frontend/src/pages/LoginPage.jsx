@@ -41,7 +41,7 @@ const S = {
 
 export default function LoginPage() {
   const { login } = useAuth();
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -49,7 +49,7 @@ export default function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      const { data } = await api.post('/api/auth/login', { email, password });
+      const { data } = await api.post('/api/auth/login', { username, password });
       login(data.user, data.access_token);
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Login failed');
@@ -68,13 +68,13 @@ export default function LoginPage() {
         </div>
         <h2 style={S.title}>Sign in to your account</h2>
         <form onSubmit={handleSubmit}>
-          <label style={S.label}>Email</label>
+          <label style={S.label}>Username</label>
           <input
             style={S.input}
-            type="email"
-            value={email}
-            onChange={e => setEmail(e.target.value)}
-            placeholder="you@pentadcrm.com"
+            type="text"
+            value={username}
+            onChange={e => setUsername(e.target.value)}
+            placeholder="Your name"
             required
           />
           <label style={S.label}>Password</label>

@@ -12,7 +12,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 
 
 class LoginRequest(BaseModel):
-    email: str
+    username: str
     password: str
 
 
@@ -23,9 +23,11 @@ class ResetPasswordRequest(BaseModel):
 
 @router.post("/login")
 def login(req: LoginRequest, db: Session = Depends(get_db)):
-    user = db.query(User).filter(User.email == req.email, User.is_active == True).first()
+    user = db.query(User).filter(
+        User.full_name.ilike(req.username), User.is_active == True
+    ).first()
     if not user or not verify_password(req.password, user.password_hash):
-        raise HTTPException(status_code=401, detail="Invalid email or password")
+        raise HTTPException(status_code=401, detail="Invalid username or password")
     token = create_access_token({"sub": str(user.id)})
     return {
         "access_token": token,
