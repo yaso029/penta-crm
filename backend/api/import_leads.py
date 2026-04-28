@@ -63,8 +63,15 @@ def read_file(content: bytes, filename: str):
     filename = filename.lower()
 
     if filename.endswith(".csv"):
-        text = content.decode("utf-8-sig", errors="replace")
-        reader = csv.reader(io.StringIO(text, newline=''))
+        # Detect encoding: UTF-16 has BOM \xff\xfe or \xfe\xff
+        if content[:2] in (b'\xff\xfe', b'\xfe\xff'):
+            text = content.decode("utf-16")
+        else:
+            text = content.decode("utf-8-sig", errors="replace")
+        # Detect delimiter (comma, semicolon, or tab)
+        first_line = text.splitlines()[0] if text.splitlines() else ""
+        delimiter = '\t' if '\t' in first_line else (';' if ';' in first_line else ',')
+        reader = csv.reader(io.StringIO(text, newline=''), delimiter=delimiter)
         all_rows = list(reader)
         if not all_rows:
             raise HTTPException(status_code=400, detail="Empty file")
