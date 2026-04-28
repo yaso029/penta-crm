@@ -34,7 +34,9 @@ export default function ImportModal({ onClose, onImported }) {
       const { data } = await api.post('/api/leads/import/preview', form);
       setPreview(data);
     } catch (err) {
-      toast.error(err.response?.data?.detail || 'Failed to read file');
+      const msg = err.response?.data?.detail || err.message || 'Failed to read file';
+      toast.error(msg);
+      console.error('Import preview error:', err.response?.data || err.message);
       setFile(null);
     } finally {
       setLoading(false);

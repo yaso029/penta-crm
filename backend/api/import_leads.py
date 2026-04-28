@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, UploadFile, File, HTTPException
 from sqlalchemy.orm import Session
 from backend.database.db import get_db
 from backend.database.models import User, Lead, Activity
-from backend.services.auth_service import require_admin_or_team_leader
+from backend.services.auth_service import get_current_user
 import csv
 import io
 import re
@@ -104,7 +104,7 @@ def read_file(content: bytes, filename: str):
 @router.post("/preview")
 async def preview_import(
     file: UploadFile = File(...),
-    current_user: User = Depends(require_admin_or_team_leader),
+    current_user: User = Depends(get_current_user),
 ):
     content = await file.read()
     headers, rows = read_file(content, file.filename)
@@ -123,7 +123,7 @@ async def preview_import(
 @router.post("")
 async def import_leads(
     file: UploadFile = File(...),
-    current_user: User = Depends(require_admin_or_team_leader),
+    current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     content = await file.read()
