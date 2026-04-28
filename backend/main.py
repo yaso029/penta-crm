@@ -29,18 +29,26 @@ app.include_router(import_leads.router)
 def seed_admin():
     db = SessionLocal()
     try:
-        existing = db.query(models.User).filter(models.User.email == "admin@pentadcrm.com").first()
+        # Update old default admin if it exists
+        old = db.query(models.User).filter(models.User.email == "admin@pentadcrm.com").first()
+        if old:
+            old.full_name = "Yaso"
+            old.email = "yaso@pentacrm.com"
+            old.password_hash = hash_password("Yaso@123")
+            db.commit()
+            return
+        # Create if no admin exists yet
+        existing = db.query(models.User).filter(models.User.email == "yaso@pentacrm.com").first()
         if not existing:
             admin = models.User(
-                full_name="Admin",
-                email="admin@pentadcrm.com",
-                password_hash=hash_password("admin123"),
+                full_name="Yaso",
+                email="yaso@pentacrm.com",
+                password_hash=hash_password("Yaso@123"),
                 role="admin",
                 is_active=True,
             )
             db.add(admin)
             db.commit()
-            print("Seeded admin user: admin@pentadcrm.com / admin123")
     finally:
         db.close()
 
