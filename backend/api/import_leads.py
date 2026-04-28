@@ -64,7 +64,7 @@ def read_file(content: bytes, filename: str):
 
     if filename.endswith(".csv"):
         text = content.decode("utf-8-sig", errors="replace")
-        reader = csv.reader(io.StringIO(text))
+        reader = csv.reader(io.StringIO(text, newline=''))
         all_rows = list(reader)
         if not all_rows:
             raise HTTPException(status_code=400, detail="Empty file")
