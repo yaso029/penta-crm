@@ -101,12 +101,14 @@ export default function LeadsPage() {
   const [showAdd, setShowAdd] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [teamMembers, setTeamMembers] = useState([]);
+  const [selected, setSelected] = useState(new Set());
+  const [bulkStage, setBulkStage] = useState('');
+  const [bulkAssign, setBulkAssign] = useState('');
+  const [bulkLoading, setBulkLoading] = useState(false);
 
   useEffect(() => {
     fetchLeads();
-    if (user?.role !== 'broker') {
-      api.get('/api/users/team').then(r => setTeamMembers(r.data)).catch(() => {});
-    }
+    api.get('/api/users/team').then(r => setTeamMembers(r.data)).catch(() => {});
   }, [stageFilter]);
 
   const fetchLeads = async () => {
@@ -116,6 +118,7 @@ export default function LeadsPage() {
       if (stageFilter) params.stage = stageFilter;
       const { data } = await api.get('/api/leads', { params });
       setLeads(data);
+      setSelected(new Set());
     } catch {
       toast.error('Failed to load leads');
     } finally {
@@ -128,6 +131,43 @@ export default function LeadsPage() {
     l.phone?.includes(search) || l.email?.toLowerCase().includes(search.toLowerCase())
   );
 
+  const allSelected = filtered.length > 0 && filtered.every(l => selected.has(l.id));
+
+  const toggleAll = () => {
+    if (allSelected) setSelected(new Set());
+    else setSelected(new Set(filtered.map(l => l.id)));
+  };
+
+  const toggleOne = (id, e) => {
+    e.stopPropagation();
+    setSelected(prev => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const applyBulk = async (action, value) => {
+    if (!selected.size) return;
+    setBulkLoading(true);
+    try {
+      const payload = { lead_ids: [...selected], action };
+      if (action === 'stage') payload.stage = value;
+      if (action === 'assign') payload.assigned_to = parseInt(value);
+      const { data } = await api.post('/api/leads/bulk', payload);
+      toast.success(`${data.updated} leads updated`);
+      setBulkStage('');
+      setBulkAssign('');
+      fetchLeads();
+    } catch (err) {
+      toast.error(err.response?.data?.detail || 'Bulk action failed');
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const selCount = selected.size;
+
   return (
     <div>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
@@ -136,44 +176,72 @@ export default function LeadsPage() {
           <p style={{ color: '#888', fontSize: 14, marginTop: 4 }}>{leads.length} leads total</p>
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          <button
-            onClick={() => setShowImport(true)}
-            style={{ padding: '10px 20px', background: '#fff', color: NAVY, border: `1.5px solid ${NAVY}`, borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}
-          >
+          <button onClick={() => setShowImport(true)}
+            style={{ padding: '10px 20px', background: '#fff', color: NAVY, border: `1.5px solid ${NAVY}`, borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
             Import CSV / Excel
           </button>
-          <button
-            onClick={() => setShowAdd(true)}
-            style={{ padding: '10px 20px', background: NAVY, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}
-          >
+          <button onClick={() => setShowAdd(true)}
+            style={{ padding: '10px 20px', background: NAVY, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
             + Add Lead
           </button>
         </div>
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 20, flexWrap: 'wrap' }}>
-        <input
-          value={search}
-          onChange={e => setSearch(e.target.value)}
-          placeholder="Search by name, phone, email..."
-          style={{ flex: 1, minWidth: 200, padding: '9px 14px', border: '1.5px solid #e0e0e0', borderRadius: 8, fontSize: 13, outline: 'none' }}
-        />
-        <select
-          value={stageFilter}
-          onChange={e => setStageFilter(e.target.value)}
-          style={{ padding: '9px 14px', border: '1.5px solid #e0e0e0', borderRadius: 8, fontSize: 13, outline: 'none', minWidth: 150 }}
-        >
+      <div style={{ display: 'flex', gap: 12, marginBottom: selCount > 0 ? 12 : 20, flexWrap: 'wrap' }}>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, phone, email..."
+          style={{ flex: 1, minWidth: 200, padding: '9px 14px', border: '1.5px solid #e0e0e0', borderRadius: 8, fontSize: 13, outline: 'none' }} />
+        <select value={stageFilter} onChange={e => setStageFilter(e.target.value)}
+          style={{ padding: '9px 14px', border: '1.5px solid #e0e0e0', borderRadius: 8, fontSize: 13, outline: 'none', minWidth: 150 }}>
           <option value="">All Stages</option>
           {STAGES.map(s => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
         </select>
       </div>
+
+      {/* Bulk action toolbar */}
+      {selCount > 0 && (
+        <div style={{
+          background: NAVY, borderRadius: 10, padding: '12px 20px', marginBottom: 16,
+          display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+        }}>
+          <span style={{ color: '#fff', fontWeight: 600, fontSize: 14, marginRight: 4 }}>
+            {selCount} selected
+          </span>
+          <select
+            value={bulkStage}
+            onChange={e => { setBulkStage(e.target.value); if (e.target.value) applyBulk('stage', e.target.value); }}
+            disabled={bulkLoading}
+            style={{ padding: '7px 12px', borderRadius: 7, border: 'none', fontSize: 13, cursor: 'pointer', minWidth: 150 }}
+          >
+            <option value="">Change Stage...</option>
+            {STAGES.map(s => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
+          </select>
+          {teamMembers.length > 0 && (
+            <select
+              value={bulkAssign}
+              onChange={e => { setBulkAssign(e.target.value); if (e.target.value) applyBulk('assign', e.target.value); }}
+              disabled={bulkLoading}
+              style={{ padding: '7px 12px', borderRadius: 7, border: 'none', fontSize: 13, cursor: 'pointer', minWidth: 160 }}
+            >
+              <option value="">Assign To...</option>
+              {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name} ({m.role.replace('_', ' ')})</option>)}
+            </select>
+          )}
+          <button onClick={() => setSelected(new Set())}
+            style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: 7, padding: '7px 14px', cursor: 'pointer', fontSize: 13 }}>
+            Clear
+          </button>
+        </div>
+      )}
 
       {/* Table */}
       <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse' }}>
           <thead>
             <tr style={{ background: '#fafafa', borderBottom: '1px solid #f0f0f0' }}>
+              <th style={{ padding: '12px 16px', width: 40 }}>
+                <input type="checkbox" checked={allSelected} onChange={toggleAll} style={{ cursor: 'pointer', width: 15, height: 15 }} />
+              </th>
               {['Name', 'Phone', 'Source', 'Budget', 'Stage', 'Assigned To', 'Date'].map(h => (
                 <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</th>
               ))}
@@ -181,40 +249,38 @@ export default function LeadsPage() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: '#aaa' }}>Loading...</td></tr>
+              <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#aaa' }}>Loading...</td></tr>
             ) : filtered.length === 0 ? (
-              <tr><td colSpan={7} style={{ padding: 40, textAlign: 'center', color: '#aaa' }}>No leads found</td></tr>
-            ) : filtered.map(lead => (
-              <tr
-                key={lead.id}
-                onClick={() => navigate(`/leads/${lead.id}`)}
-                style={{ borderBottom: '1px solid #f5f5f5', cursor: 'pointer', transition: 'background 0.1s' }}
-                onMouseEnter={e => e.currentTarget.style.background = '#fafbff'}
-                onMouseLeave={e => e.currentTarget.style.background = ''}
-              >
-                <td style={{ padding: '12px 16px' }}>
-                  <div style={{ fontWeight: 600, fontSize: 13, color: '#1a1a2e' }}>{lead.full_name}</div>
-                  {lead.email && <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>{lead.email}</div>}
-                </td>
-                <td style={{ padding: '12px 16px', fontSize: 13, color: '#555' }}>{lead.phone}</td>
-                <td style={{ padding: '12px 16px', fontSize: 13, color: '#555' }}>{lead.source}</td>
-                <td style={{ padding: '12px 16px', fontSize: 13, color: GOLD, fontWeight: 600 }}>
-                  {lead.budget ? `AED ${Number(lead.budget).toLocaleString()}` : '—'}
-                </td>
-                <td style={{ padding: '12px 16px' }}>
-                  <span style={{
-                    background: `${STAGE_COLORS[lead.stage]}20`, color: STAGE_COLORS[lead.stage],
-                    borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 600,
-                  }}>
-                    {STAGE_LABELS[lead.stage] || lead.stage}
-                  </span>
-                </td>
-                <td style={{ padding: '12px 16px', fontSize: 13, color: '#555' }}>{lead.assigned_to_name || '—'}</td>
-                <td style={{ padding: '12px 16px', fontSize: 12, color: '#aaa' }}>
-                  {new Date(lead.created_at).toLocaleDateString()}
-                </td>
-              </tr>
-            ))}
+              <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#aaa' }}>No leads found</td></tr>
+            ) : filtered.map(lead => {
+              const isSelected = selected.has(lead.id);
+              return (
+                <tr key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)}
+                  style={{ borderBottom: '1px solid #f5f5f5', cursor: 'pointer', background: isSelected ? '#f0f4ff' : '', transition: 'background 0.1s' }}
+                  onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#fafbff'; }}
+                  onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = ''; }}>
+                  <td style={{ padding: '12px 16px' }} onClick={e => toggleOne(lead.id, e)}>
+                    <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', width: 15, height: 15 }} />
+                  </td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <div style={{ fontWeight: 600, fontSize: 13, color: '#1a1a2e' }}>{lead.full_name}</div>
+                    {lead.email && <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>{lead.email}</div>}
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: '#555' }}>{lead.phone}</td>
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: '#555' }}>{lead.source}</td>
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: GOLD, fontWeight: 600 }}>
+                    {lead.budget ? `AED ${Number(lead.budget).toLocaleString()}` : '—'}
+                  </td>
+                  <td style={{ padding: '12px 16px' }}>
+                    <span style={{ background: `${STAGE_COLORS[lead.stage]}20`, color: STAGE_COLORS[lead.stage], borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 600 }}>
+                      {STAGE_LABELS[lead.stage] || lead.stage}
+                    </span>
+                  </td>
+                  <td style={{ padding: '12px 16px', fontSize: 13, color: '#555' }}>{lead.assigned_to_name || '—'}</td>
+                  <td style={{ padding: '12px 16px', fontSize: 12, color: '#aaa' }}>{new Date(lead.created_at).toLocaleDateString()}</td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

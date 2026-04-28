@@ -47,14 +47,19 @@ def list_users(current_user: User = Depends(require_admin), db: Session = Depend
 @router.get("/team")
 def get_my_team(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role == "admin":
-        brokers = db.query(User).filter(User.role == "broker", User.is_active == True).all()
+        # Admins can assign to brokers AND team leaders
+        members = db.query(User).filter(
+            User.role.in_(["broker", "team_leader"]), User.is_active == True
+        ).order_by(User.role, User.full_name).all()
     elif current_user.role == "team_leader":
-        brokers = db.query(User).filter(
+        # Team leader sees their own brokers + themselves
+        members = db.query(User).filter(
             User.team_leader_id == current_user.id, User.is_active == True
         ).all()
+        members = [current_user] + members
     else:
-        brokers = []
-    return [user_to_dict(b) for b in brokers]
+        members = []
+    return [user_to_dict(b) for b in members]
 
 
 @router.post("")

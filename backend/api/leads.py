@@ -270,6 +270,47 @@ def get_activities(lead_id: int, current_user: User = Depends(get_current_user),
     return [activity_to_dict(a) for a in activities]
 
 
+class BulkActionRequest(BaseModel):
+    lead_ids: List[int]
+    action: str  # "stage" or "assign"
+    stage: Optional[str] = None
+    assigned_to: Optional[int] = None
+
+
+@router.post("/bulk")
+def bulk_action(req: BulkActionRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if not req.lead_ids:
+        raise HTTPException(status_code=400, detail="No leads selected")
+
+    valid_stages = ["new_lead", "contacted", "follow_up", "no_answer", "not_interested", "wrong_number", "junk"]
+    accessible = get_leads_query(current_user, db)
+    leads = accessible.filter(Lead.id.in_(req.lead_ids)).all()
+
+    if not leads:
+        raise HTTPException(status_code=404, detail="No accessible leads found")
+
+    updated = 0
+    for lead in leads:
+        if req.action == "stage" and req.stage:
+            if req.stage not in valid_stages:
+                raise HTTPException(status_code=400, detail="Invalid stage")
+            old_stage = lead.stage
+            lead.stage = req.stage
+            lead.updated_at = datetime.utcnow()
+            db.add(Activity(lead_id=lead.id, user_id=current_user.id, type="stage_change",
+                content=f"Stage changed from '{old_stage}' to '{req.stage}' (bulk action)"))
+            updated += 1
+        elif req.action == "assign" and req.assigned_to:
+            lead.assigned_to = req.assigned_to
+            lead.updated_at = datetime.utcnow()
+            db.add(Activity(lead_id=lead.id, user_id=current_user.id, type="note",
+                content=f"Lead reassigned via bulk action by {current_user.full_name}"))
+            updated += 1
+
+    db.commit()
+    return {"ok": True, "updated": updated}
+
+
 @router.delete("/{lead_id}")
 def delete_lead(lead_id: int, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
     lead = db.query(Lead).filter(Lead.id == lead_id).first()
