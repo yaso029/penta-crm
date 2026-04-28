@@ -5,13 +5,14 @@ from typing import Optional
 from backend.database.db import get_db
 from backend.database.models import User
 from backend.services.auth_service import get_current_user, require_admin, hash_password
+import re
 
 router = APIRouter(prefix="/api/users", tags=["users"])
 
 
 class CreateUserRequest(BaseModel):
     full_name: str
-    email: str
+    email: Optional[str] = None
     password: str
     role: str
     team_leader_id: Optional[int] = None
@@ -23,6 +24,10 @@ class UpdateUserRequest(BaseModel):
     role: Optional[str] = None
     team_leader_id: Optional[int] = None
     is_active: Optional[bool] = None
+
+
+class UpdatePasswordRequest(BaseModel):
+    password: str
 
 
 def user_to_dict(u: User):
@@ -38,6 +43,11 @@ def user_to_dict(u: User):
     }
 
 
+def generate_email(name: str) -> str:
+    slug = re.sub(r'[^a-z0-9]', '', name.lower().replace(' ', ''))
+    return f"{slug}@penta.crm"
+
+
 @router.get("")
 def list_users(current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
     users = db.query(User).order_by(User.created_at.desc()).all()
@@ -47,12 +57,10 @@ def list_users(current_user: User = Depends(require_admin), db: Session = Depend
 @router.get("/team")
 def get_my_team(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     if current_user.role == "admin":
-        # Admins can assign to brokers AND team leaders
         members = db.query(User).filter(
             User.role.in_(["broker", "team_leader"]), User.is_active == True
         ).order_by(User.role, User.full_name).all()
     elif current_user.role == "team_leader":
-        # Team leader sees their own brokers + themselves
         members = db.query(User).filter(
             User.team_leader_id == current_user.id, User.is_active == True
         ).all()
@@ -66,12 +74,15 @@ def get_my_team(current_user: User = Depends(get_current_user), db: Session = De
 def create_user(req: CreateUserRequest, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
     if req.role not in ("admin", "team_leader", "broker"):
         raise HTTPException(status_code=400, detail="Invalid role")
-    existing = db.query(User).filter(User.email == req.email).first()
+    email = req.email if req.email else generate_email(req.full_name)
+    existing = db.query(User).filter(User.email == email).first()
     if existing:
-        raise HTTPException(status_code=400, detail="Email already in use")
+        # Make email unique by appending a number
+        count = db.query(User).count()
+        email = f"{email.split('@')[0]}{count}@penta.crm"
     user = User(
         full_name=req.full_name,
-        email=req.email,
+        email=email,
         password_hash=hash_password(req.password),
         role=req.role,
         team_leader_id=req.team_leader_id,
@@ -100,6 +111,16 @@ def update_user(user_id: int, req: UpdateUserRequest, current_user: User = Depen
     db.commit()
     db.refresh(user)
     return user_to_dict(user)
+
+
+@router.patch("/{user_id}/password")
+def reset_password(user_id: int, req: UpdatePasswordRequest, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.password_hash = hash_password(req.password)
+    db.commit()
+    return {"ok": True}
 
 
 @router.delete("/{user_id}")
