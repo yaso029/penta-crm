@@ -105,17 +105,19 @@ export default function LeadsPage() {
   const [bulkStage, setBulkStage] = useState('');
   const [bulkAssign, setBulkAssign] = useState('');
   const [bulkLoading, setBulkLoading] = useState(false);
+  const [assigneeFilter, setAssigneeFilter] = useState('');
 
   useEffect(() => {
     fetchLeads();
     api.get('/api/users/team').then(r => setTeamMembers(r.data)).catch(() => {});
-  }, [stageFilter]);
+  }, [stageFilter, assigneeFilter]);
 
   const fetchLeads = async () => {
     setLoading(true);
     try {
       const params = {};
       if (stageFilter) params.stage = stageFilter;
+      if (assigneeFilter) params.assigned_to = assigneeFilter;
       const { data } = await api.get('/api/leads', { params });
       setLeads(data);
       setSelected(new Set());
@@ -196,6 +198,13 @@ export default function LeadsPage() {
           <option value="">All Stages</option>
           {STAGES.map(s => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
         </select>
+        {teamMembers.length > 0 && (
+          <select value={assigneeFilter} onChange={e => setAssigneeFilter(e.target.value)}
+            style={{ padding: '9px 14px', border: '1.5px solid #e0e0e0', borderRadius: 8, fontSize: 13, outline: 'none', minWidth: 160 }}>
+            <option value="">All Agents</option>
+            {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
+          </select>
+        )}
       </div>
 
       {/* Bulk action toolbar */}
