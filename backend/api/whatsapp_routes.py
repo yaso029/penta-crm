@@ -117,7 +117,11 @@ async def send_whatsapp(req: SendRequest, current_user=Depends(require_admin), d
             results.append({"partner_id": pid, "error": "No WhatsApp number"})
             continue
 
-        result = await whatsapp_service.send_whatsapp_text(to_number, body)
+        if template and template.meta_status == "approved":
+            template_name = template.name.lower().replace(" ", "_")
+            result = await whatsapp_service.send_whatsapp_template(to_number, template_name)
+        else:
+            result = await whatsapp_service.send_whatsapp_text(to_number, body)
 
         if "error" in result and not result.get("simulated"):
             results.append({"partner_id": pid, "error": result["error"]})

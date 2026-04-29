@@ -50,6 +50,33 @@ async def send_whatsapp_text(to_number: str, message: str) -> dict:
         return {"error": data.get("error", {}).get("message", "Send failed")}
 
 
+async def send_whatsapp_template(to_number: str, template_name: str, language: str = "en") -> dict:
+    if not WHATSAPP_API_TOKEN or not WHATSAPP_PHONE_NUMBER_ID:
+        return {"error": "WhatsApp not configured", "simulated": True, "message_id": f"sim_{to_number}"}
+
+    url = f"https://graph.facebook.com/v18.0/{WHATSAPP_PHONE_NUMBER_ID}/messages"
+    headers = {
+        "Authorization": f"Bearer {WHATSAPP_API_TOKEN}",
+        "Content-Type": "application/json",
+    }
+    payload = {
+        "messaging_product": "whatsapp",
+        "to": to_number,
+        "type": "template",
+        "template": {
+            "name": template_name,
+            "language": {"code": language},
+        },
+    }
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(url, json=payload, headers=headers)
+        data = resp.json()
+        if resp.status_code == 200:
+            msg_id = data.get("messages", [{}])[0].get("id", "")
+            return {"ok": True, "message_id": msg_id}
+        return {"error": data.get("error", {}).get("message", "Send failed")}
+
+
 async def submit_template_to_meta(template_name: str, category: str, body: str, buttons: list) -> dict:
     if not WHATSAPP_API_TOKEN or not WHATSAPP_BUSINESS_ACCOUNT_ID:
         return {"error": "WhatsApp not configured"}
