@@ -112,8 +112,16 @@ async def send_whatsapp(req: SendRequest, current_user=Depends(require_admin), d
             "partner_type": partner.partner_type, "commission_rate": partner.commission_rate
         })
 
-        to_number = (partner.whatsapp_number or "").replace(" ", "").replace("+", "")
+        to_number = (partner.whatsapp_number or "").replace(" ", "").replace("+", "").replace("-", "")
+        if not to_number:
+            results.append({"partner_id": pid, "error": "No WhatsApp number"})
+            continue
+
         result = await whatsapp_service.send_whatsapp_text(to_number, body)
+
+        if "error" in result and not result.get("simulated"):
+            results.append({"partner_id": pid, "error": result["error"]})
+            continue
 
         msg = OutreachMessage(
             partner_id=partner.id,
@@ -125,10 +133,14 @@ async def send_whatsapp(req: SendRequest, current_user=Depends(require_admin), d
         )
         db.add(msg)
         partner.last_contacted_at = datetime.utcnow()
-        results.append({"partner_id": pid, "ok": True, "result": result})
+        results.append({"partner_id": pid, "ok": True})
 
     db.commit()
-    return {"results": results, "sent": len([r for r in results if r.get("ok")])}
+    errors = [r for r in results if r.get("error")]
+    sent_count = len([r for r in results if r.get("ok")])
+    if sent_count == 0 and errors:
+        raise HTTPException(status_code=400, detail=errors[0]["error"])
+    return {"results": results, "sent": sent_count}
 
 
 @router.get("/templates")
