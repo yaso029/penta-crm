@@ -1,5 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
+import { useEffect } from 'react';
 
 const NAVY = '#0A2342';
 const GOLD = '#C9A84C';
@@ -33,10 +34,13 @@ export default function Landing() {
 
   const visible = cards.filter(c => c.roles.includes(user?.role));
 
-  if (visible.length === 1) {
-    navigate(visible[0].path, { replace: true });
-    return null;
-  }
+  useEffect(() => {
+    if (visible.length === 1) {
+      navigate(visible[0].path, { replace: true });
+    }
+  }, []);
+
+  if (visible.length === 1) return null;
 
   return (
     <div style={{
