@@ -51,7 +51,7 @@ export default function LeadDetailPage() {
       setEditForm({ notes: data.notes || '', budget: data.budget || '', preferred_area: data.preferred_area || '', property_type: data.property_type || '' });
     } catch {
       toast.error('Lead not found');
-      navigate('/leads');
+      navigate('/crm/leads');
     } finally {
       setLoading(false);
     }

@@ -264,7 +264,7 @@ export default function LeadsPage() {
             ) : filtered.map(lead => {
               const isSelected = selected.has(lead.id);
               return (
-                <tr key={lead.id} onClick={() => navigate(`/leads/${lead.id}`)}
+                <tr key={lead.id} onClick={() => navigate(`/crm/leads/${lead.id}`)}
                   style={{ borderBottom: '1px solid #f5f5f5', cursor: 'pointer', background: isSelected ? '#f0f4ff' : '', transition: 'background 0.1s' }}
                   onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#fafbff'; }}
                   onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = ''; }}>
