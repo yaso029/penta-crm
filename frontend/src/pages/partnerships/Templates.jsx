@@ -290,7 +290,21 @@ export default function Templates() {
                   </div>
                 )}
               </div>
-              <div style={{ display: 'flex', gap: 8, marginLeft: 16 }}>
+              <div style={{ display: 'flex', gap: 8, marginLeft: 16, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                <button onClick={async () => {
+                  try {
+                    const { data } = await api.post(`/api/whatsapp/templates/${t.id}/check-status`);
+                    toast.success(`Meta status: ${data.meta_status?.toUpperCase()}`);
+                    fetchAll();
+                  } catch { toast.error('Could not reach Meta'); }
+                }} style={{ padding: '6px 12px', border: '1.5px solid #3b82f6', color: '#3b82f6', background: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>↻ Check</button>
+                {t.meta_status !== 'approved' && (
+                  <button onClick={async () => {
+                    await api.patch(`/api/whatsapp/templates/${t.id}/status?status=approved`);
+                    toast.success('Marked as approved');
+                    fetchAll();
+                  }} style={{ padding: '6px 12px', border: '1.5px solid #10b981', color: '#10b981', background: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>✓ Mark Approved</button>
+                )}
                 <button onClick={() => setWaModal(t)} style={{ padding: '6px 12px', border: `1.5px solid ${NAVY}`, color: NAVY, background: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Edit</button>
                 <button onClick={() => deleteWa(t.id)} style={{ padding: '6px 12px', border: '1.5px solid #ef4444', color: '#ef4444', background: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>Delete</button>
               </div>

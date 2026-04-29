@@ -200,6 +200,28 @@ async def submit_template(template_id: int, current_user=Depends(require_admin),
     return result
 
 
+@router.post("/templates/{template_id}/check-status")
+async def check_template_status(template_id: int, current_user=Depends(require_admin), db: Session = Depends(get_db)):
+    t = db.query(WhatsAppTemplate).filter(WhatsAppTemplate.id == template_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Template not found")
+    result = await whatsapp_service.check_template_status(t.name)
+    if result.get("status"):
+        t.meta_status = result["status"].lower()
+        db.commit()
+    return {"meta_status": t.meta_status, **result}
+
+
+@router.patch("/templates/{template_id}/status")
+def set_template_status(template_id: int, status: str, current_user=Depends(require_admin), db: Session = Depends(get_db)):
+    t = db.query(WhatsAppTemplate).filter(WhatsAppTemplate.id == template_id).first()
+    if not t:
+        raise HTTPException(status_code=404, detail="Template not found")
+    t.meta_status = status
+    db.commit()
+    return tmpl_to_dict(t)
+
+
 @router.get("/sent")
 def sent_history(current_user=Depends(require_admin), db: Session = Depends(get_db)):
     msgs = db.query(OutreachMessage).filter(OutreachMessage.channel == "whatsapp") \

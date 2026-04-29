@@ -77,6 +77,21 @@ async def send_whatsapp_template(to_number: str, template_name: str, language: s
         return {"error": data.get("error", {}).get("message", "Send failed")}
 
 
+async def check_template_status(template_name: str) -> dict:
+    if not WHATSAPP_API_TOKEN or not WHATSAPP_BUSINESS_ACCOUNT_ID:
+        return {"error": "WhatsApp not configured"}
+    url = f"https://graph.facebook.com/v18.0/{WHATSAPP_BUSINESS_ACCOUNT_ID}/message_templates"
+    headers = {"Authorization": f"Bearer {WHATSAPP_API_TOKEN}"}
+    params = {"name": template_name.lower().replace(" ", "_")}
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(url, headers=headers, params=params)
+        data = resp.json()
+        templates = data.get("data", [])
+        if templates:
+            return {"status": templates[0].get("status", "UNKNOWN"), "found": True}
+        return {"status": "NOT_FOUND", "found": False}
+
+
 async def submit_template_to_meta(template_name: str, category: str, body: str, buttons: list) -> dict:
     if not WHATSAPP_API_TOKEN or not WHATSAPP_BUSINESS_ACCOUNT_ID:
         return {"error": "WhatsApp not configured"}
