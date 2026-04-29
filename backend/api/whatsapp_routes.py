@@ -68,8 +68,6 @@ def daily_count(current_user=Depends(require_admin), db: Session = Depends(get_d
 
 @router.post("/send")
 async def send_whatsapp(req: SendRequest, current_user=Depends(require_admin), db: Session = Depends(get_db)):
-    if not whatsapp_service.is_within_sending_hours():
-        raise HTTPException(status_code=400, detail="Outside sending hours (9 AM – 6 PM UAE time)")
 
     today = datetime.now(UAE_TZ).date()
     sent_today = db.query(OutreachMessage).filter(

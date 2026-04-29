@@ -294,9 +294,10 @@ export default function Templates() {
                 <button onClick={async () => {
                   try {
                     const { data } = await api.post(`/api/whatsapp/templates/${t.id}/check-status`);
+                    if (data.error) { toast.error(data.error); return; }
                     toast.success(`Meta status: ${data.meta_status?.toUpperCase()}`);
                     fetchAll();
-                  } catch { toast.error('Could not reach Meta'); }
+                  } catch (err) { toast.error(err.response?.data?.detail || 'Could not reach Meta'); }
                 }} style={{ padding: '6px 12px', border: '1.5px solid #3b82f6', color: '#3b82f6', background: '#fff', borderRadius: 6, cursor: 'pointer', fontSize: 12, fontWeight: 600 }}>↻ Check</button>
                 {t.meta_status !== 'approved' && (
                   <button onClick={async () => {
