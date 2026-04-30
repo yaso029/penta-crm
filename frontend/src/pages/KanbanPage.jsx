@@ -155,7 +155,7 @@ export default function KanbanPage() {
                       }}
                     >
                       {leads.map((lead, i) => (
-                        <LeadCard key={lead.id} lead={lead} index={i} onClick={id => navigate(`/leads/${id}`)} />
+                        <LeadCard key={lead.id} lead={lead} index={i} onClick={id => navigate(`/crm/leads/${id}`)} />
                       ))}
                       {provided.placeholder}
                       {leads.length === 0 && !snapshot.isDraggingOver && (
