@@ -22,8 +22,8 @@ def _clean_phone(phone: str) -> str:
     return "".join(c for c in phone if c.isdigit())
 
 
-async def send_stage_event(lead) -> dict:
-    stage = lead.stage
+async def send_stage_event(lead: dict) -> dict:
+    stage = lead.get("stage")
     event_name = STAGE_EVENTS.get(stage)
     if not event_name:
         return {"skipped": True, "reason": f"No event for stage '{stage}'"}
@@ -32,12 +32,14 @@ async def send_stage_event(lead) -> dict:
         return {"skipped": True, "reason": "META_PIXEL_ID or META_CAPI_TOKEN not configured"}
 
     user_data = {}
-    if lead.phone:
-        cleaned = _clean_phone(lead.phone)
+    phone = lead.get("phone", "")
+    email = lead.get("email", "")
+    if phone:
+        cleaned = _clean_phone(phone)
         if cleaned:
             user_data["ph"] = [_hash(cleaned)]
-    if lead.email:
-        user_data["em"] = [_hash(lead.email)]
+    if email:
+        user_data["em"] = [_hash(email)]
 
     event = {
         "event_name": event_name,
@@ -47,9 +49,10 @@ async def send_stage_event(lead) -> dict:
         "custom_data": {},
     }
 
-    if event_name == "Purchase" and lead.budget:
+    budget = lead.get("budget")
+    if event_name == "Purchase" and budget:
         try:
-            event["custom_data"]["value"] = float(lead.budget)
+            event["custom_data"]["value"] = float(budget)
             event["custom_data"]["currency"] = "AED"
         except (ValueError, TypeError):
             pass
