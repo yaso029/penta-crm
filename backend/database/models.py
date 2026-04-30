@@ -80,6 +80,18 @@ class Notification(Base):
     user = relationship("User", back_populates="notifications")
 
 
+class Customer(Base):
+    __tablename__ = "customers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    full_name = Column(String(200), nullable=False)
+    phone = Column(String(50), nullable=True)
+    email = Column(String(200), nullable=True)
+    synced_to_meta = Column(Boolean, default=False)
+    synced_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 # ─── Partnership Models ───────────────────────────────────────────────────────
 
 class Partner(Base):

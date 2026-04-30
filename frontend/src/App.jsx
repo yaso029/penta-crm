@@ -9,6 +9,7 @@ import KanbanPage from './pages/KanbanPage';
 import LeadsPage from './pages/LeadsPage';
 import LeadDetailPage from './pages/LeadDetailPage';
 import UsersPage from './pages/UsersPage';
+import CustomersPage from './pages/CustomersPage';
 import PartnershipsDashboard from './pages/partnerships/Dashboard';
 import Partners from './pages/partnerships/Partners';
 import Outreach from './pages/partnerships/Outreach';
@@ -42,6 +43,11 @@ export default function App() {
         <Route path="users" element={
           <PrivateRoute roles={['admin']}>
             <UsersPage />
+          </PrivateRoute>
+        } />
+        <Route path="customers" element={
+          <PrivateRoute roles={['admin']}>
+            <CustomersPage />
           </PrivateRoute>
         } />
       </Route>

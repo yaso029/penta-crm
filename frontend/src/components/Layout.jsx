@@ -73,7 +73,10 @@ export default function Layout() {
     { to: '/crm', label: 'Dashboard', icon: '▦', exact: true },
     { to: '/crm/kanban', label: 'Pipeline', icon: '◫' },
     { to: '/crm/leads', label: 'Leads', icon: '☰' },
-    ...(user?.role === 'admin' ? [{ to: '/crm/users', label: 'Users', icon: '◎' }] : []),
+    ...(user?.role === 'admin' ? [
+      { to: '/crm/customers', label: 'Customers', icon: '👥' },
+      { to: '/crm/users', label: 'Users', icon: '◎' },
+    ] : []),
   ];
 
   if (isMobile) {

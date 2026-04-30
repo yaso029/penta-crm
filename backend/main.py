@@ -7,7 +7,7 @@ from backend.database.db import engine, Base
 from backend.database import models
 from backend.database.db import SessionLocal
 from backend.services.auth_service import hash_password
-from backend.api import auth, users, leads, webhook, notifications, dashboard, import_leads
+from backend.api import auth, users, leads, webhook, notifications, dashboard, import_leads, customers
 from backend.api import partners, whatsapp_routes, email_routes, commissions, partnerships_dashboard
 import os
 
@@ -29,6 +29,7 @@ app.include_router(webhook.router)
 app.include_router(notifications.router)
 app.include_router(dashboard.router)
 app.include_router(import_leads.router)
+app.include_router(customers.router)
 
 # Partnerships routes
 app.include_router(partners.router)
