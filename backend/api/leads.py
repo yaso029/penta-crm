@@ -214,6 +214,7 @@ async def update_stage(lead_id: int, req: StageUpdateRequest, background_tasks: 
     db.commit()
     db.refresh(lead)
     lead_snapshot = {"stage": lead.stage, "phone": lead.phone, "email": lead.email, "budget": lead.budget}
+    print(f"[STAGE] lead {lead_id} moved to {req.stage}, queuing CAPI task", flush=True)
     background_tasks.add_task(meta_capi_service.send_stage_event, lead_snapshot)
     return lead_to_dict(lead)
 

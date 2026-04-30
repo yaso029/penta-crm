@@ -28,14 +28,14 @@ def _clean_phone(phone: str) -> str:
 async def send_stage_event(lead: dict) -> dict:
     stage = lead.get("stage")
     event_name = STAGE_EVENTS.get(stage)
-    logger.info(f"CAPI: stage={stage} event={event_name} pixel={META_PIXEL_ID} token_set={bool(META_CAPI_TOKEN)}")
+    print(f"[CAPI] stage={stage} event={event_name} pixel={META_PIXEL_ID} token_set={bool(META_CAPI_TOKEN)}", flush=True)
 
     if not event_name:
-        logger.info(f"CAPI: no event mapped for stage '{stage}', skipping")
+        print(f"[CAPI] no event mapped for stage '{stage}', skipping", flush=True)
         return {"skipped": True, "reason": f"No event for stage '{stage}'"}
 
     if not META_PIXEL_ID or not META_CAPI_TOKEN:
-        logger.warning("CAPI: META_PIXEL_ID or META_CAPI_TOKEN not set in environment")
+        print("[CAPI] META_PIXEL_ID or META_CAPI_TOKEN not set in environment", flush=True)
         return {"skipped": True, "reason": "META_PIXEL_ID or META_CAPI_TOKEN not configured"}
 
     user_data = {}
@@ -72,11 +72,11 @@ async def send_stage_event(lead: dict) -> dict:
     url = f"https://graph.facebook.com/v18.0/{META_PIXEL_ID}/events"
     params = {"access_token": META_CAPI_TOKEN}
 
-    logger.info(f"CAPI: sending {event_name} to pixel {META_PIXEL_ID}")
+    print(f"[CAPI] sending {event_name} to pixel {META_PIXEL_ID}", flush=True)
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(url, json=payload, params=params)
         data = resp.json()
-        logger.info(f"CAPI: response status={resp.status_code} body={data}")
+        print(f"[CAPI] response status={resp.status_code} body={data}", flush=True)
         if resp.status_code == 200:
             return {"ok": True, "event": event_name, "events_received": data.get("events_received")}
         return {"error": data.get("error", {}).get("message", "CAPI error"), "event": event_name}
