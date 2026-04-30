@@ -57,12 +57,12 @@ async def send_stage_event(lead: dict) -> dict:
     }
 
     budget = lead.get("budget")
-    if event_name == "Purchase" and budget:
+    if event_name == "Purchase":
+        event["custom_data"]["currency"] = "AED"
         try:
-            event["custom_data"]["value"] = float(budget)
-            event["custom_data"]["currency"] = "AED"
+            event["custom_data"]["value"] = float(budget) if budget else 0
         except (ValueError, TypeError):
-            pass
+            event["custom_data"]["value"] = 0
 
     payload = {"data": [event]}
     test_code = os.environ.get("META_CAPI_TEST_CODE", "")
