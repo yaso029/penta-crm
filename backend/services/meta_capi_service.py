@@ -2,6 +2,9 @@ import os
 import hashlib
 import time
 import httpx
+import logging
+
+logger = logging.getLogger(__name__)
 
 META_PIXEL_ID = os.environ.get("META_PIXEL_ID", "")
 META_CAPI_TOKEN = os.environ.get("META_CAPI_TOKEN", "")
@@ -25,10 +28,14 @@ def _clean_phone(phone: str) -> str:
 async def send_stage_event(lead: dict) -> dict:
     stage = lead.get("stage")
     event_name = STAGE_EVENTS.get(stage)
+    logger.info(f"CAPI: stage={stage} event={event_name} pixel={META_PIXEL_ID} token_set={bool(META_CAPI_TOKEN)}")
+
     if not event_name:
+        logger.info(f"CAPI: no event mapped for stage '{stage}', skipping")
         return {"skipped": True, "reason": f"No event for stage '{stage}'"}
 
     if not META_PIXEL_ID or not META_CAPI_TOKEN:
+        logger.warning("CAPI: META_PIXEL_ID or META_CAPI_TOKEN not set in environment")
         return {"skipped": True, "reason": "META_PIXEL_ID or META_CAPI_TOKEN not configured"}
 
     user_data = {}
@@ -44,7 +51,7 @@ async def send_stage_event(lead: dict) -> dict:
     event = {
         "event_name": event_name,
         "event_time": int(time.time()),
-        "action_source": "crm",
+        "action_source": "system_generated",
         "user_data": user_data,
         "custom_data": {},
     }
@@ -57,19 +64,19 @@ async def send_stage_event(lead: dict) -> dict:
         except (ValueError, TypeError):
             pass
 
-    payload = {
-        "data": [event],
-        "test_event_code": os.environ.get("META_CAPI_TEST_CODE", ""),
-    }
-    if not payload["test_event_code"]:
-        del payload["test_event_code"]
+    payload = {"data": [event]}
+    test_code = os.environ.get("META_CAPI_TEST_CODE", "")
+    if test_code:
+        payload["test_event_code"] = test_code
 
     url = f"https://graph.facebook.com/v18.0/{META_PIXEL_ID}/events"
     params = {"access_token": META_CAPI_TOKEN}
 
+    logger.info(f"CAPI: sending {event_name} to pixel {META_PIXEL_ID}")
     async with httpx.AsyncClient(timeout=10) as client:
         resp = await client.post(url, json=payload, params=params)
         data = resp.json()
+        logger.info(f"CAPI: response status={resp.status_code} body={data}")
         if resp.status_code == 200:
             return {"ok": True, "event": event_name, "events_received": data.get("events_received")}
         return {"error": data.get("error", {}).get("message", "CAPI error"), "event": event_name}
