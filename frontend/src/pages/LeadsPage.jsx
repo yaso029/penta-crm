@@ -4,6 +4,7 @@ import api from '../api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../AuthContext';
 import ImportModal from '../components/ImportModal';
+import useIsMobile from '../hooks/useIsMobile';
 
 const NAVY = '#0A2342';
 const GOLD = '#C9A84C';
@@ -96,6 +97,7 @@ function AddLeadModal({ onClose, onAdded, teamMembers }) {
 export default function LeadsPage() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -174,35 +176,37 @@ export default function LeadsPage() {
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 24 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
         <div>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e' }}>All Leads</h1>
-          <p style={{ color: '#888', fontSize: 14, marginTop: 4 }}>{leads.length} leads total</p>
+          <h1 style={{ fontSize: isMobile ? 18 : 22, fontWeight: 700, color: '#1a1a2e' }}>All Leads</h1>
+          <p style={{ color: '#888', fontSize: 13, marginTop: 2 }}>{leads.length} leads total</p>
         </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <button onClick={() => setShowImport(true)}
-            style={{ padding: '10px 20px', background: '#fff', color: NAVY, border: `1.5px solid ${NAVY}`, borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
-            Import CSV / Excel
-          </button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {!isMobile && (
+            <button onClick={() => setShowImport(true)}
+              style={{ padding: '9px 16px', background: '#fff', color: NAVY, border: `1.5px solid ${NAVY}`, borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
+              Import
+            </button>
+          )}
           <button onClick={() => setShowAdd(true)}
-            style={{ padding: '10px 20px', background: NAVY, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 14 }}>
-            + Add Lead
+            style={{ padding: '9px 16px', background: NAVY, color: '#fff', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontSize: 13 }}>
+            + Add
           </button>
         </div>
       </div>
 
       {/* Filters */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: selCount > 0 ? 12 : 20, flexWrap: 'wrap' }}>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search by name, phone, email..."
-          style={{ flex: 1, minWidth: 200, padding: '9px 14px', border: '1.5px solid #e0e0e0', borderRadius: 8, fontSize: 13, outline: 'none' }} />
+      <div style={{ display: 'flex', gap: 8, marginBottom: selCount > 0 ? 10 : 16, flexWrap: 'wrap' }}>
+        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search name, phone..."
+          style={{ flex: 1, minWidth: 140, padding: '9px 12px', border: '1.5px solid #e0e0e0', borderRadius: 8, fontSize: 13, outline: 'none' }} />
         <select value={stageFilter} onChange={e => setStageFilter(e.target.value)}
-          style={{ padding: '9px 14px', border: '1.5px solid #e0e0e0', borderRadius: 8, fontSize: 13, outline: 'none', minWidth: 150 }}>
+          style={{ padding: '9px 12px', border: '1.5px solid #e0e0e0', borderRadius: 8, fontSize: 13, outline: 'none', minWidth: isMobile ? 120 : 150 }}>
           <option value="">All Stages</option>
           {STAGES.map(s => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
         </select>
-        {teamMembers.length > 0 && (
+        {!isMobile && teamMembers.length > 0 && (
           <select value={assigneeFilter} onChange={e => setAssigneeFilter(e.target.value)}
-            style={{ padding: '9px 14px', border: '1.5px solid #e0e0e0', borderRadius: 8, fontSize: 13, outline: 'none', minWidth: 160 }}>
+            style={{ padding: '9px 12px', border: '1.5px solid #e0e0e0', borderRadius: 8, fontSize: 13, outline: 'none', minWidth: 160 }}>
             <option value="">All Agents</option>
             {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
           </select>
@@ -212,17 +216,15 @@ export default function LeadsPage() {
       {/* Bulk action toolbar */}
       {selCount > 0 && (
         <div style={{
-          background: NAVY, borderRadius: 10, padding: '12px 20px', marginBottom: 16,
-          display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap',
+          background: NAVY, borderRadius: 10, padding: '10px 16px', marginBottom: 12,
+          display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap',
         }}>
-          <span style={{ color: '#fff', fontWeight: 600, fontSize: 14, marginRight: 4 }}>
-            {selCount} selected
-          </span>
+          <span style={{ color: '#fff', fontWeight: 600, fontSize: 13 }}>{selCount} selected</span>
           <select
             value={bulkStage}
             onChange={e => { setBulkStage(e.target.value); if (e.target.value) applyBulk('stage', e.target.value); }}
             disabled={bulkLoading}
-            style={{ padding: '7px 12px', borderRadius: 7, border: 'none', fontSize: 13, cursor: 'pointer', minWidth: 150 }}
+            style={{ padding: '6px 10px', borderRadius: 7, border: 'none', fontSize: 12, cursor: 'pointer' }}
           >
             <option value="">Change Stage...</option>
             {STAGES.map(s => <option key={s} value={s}>{STAGE_LABELS[s]}</option>)}
@@ -232,69 +234,110 @@ export default function LeadsPage() {
               value={bulkAssign}
               onChange={e => { setBulkAssign(e.target.value); if (e.target.value) applyBulk('assign', e.target.value); }}
               disabled={bulkLoading}
-              style={{ padding: '7px 12px', borderRadius: 7, border: 'none', fontSize: 13, cursor: 'pointer', minWidth: 160 }}
+              style={{ padding: '6px 10px', borderRadius: 7, border: 'none', fontSize: 12, cursor: 'pointer' }}
             >
               <option value="">Assign To...</option>
-              {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name} ({m.role.replace('_', ' ')})</option>)}
+              {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
             </select>
           )}
           <button onClick={() => setSelected(new Set())}
-            style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: 7, padding: '7px 14px', cursor: 'pointer', fontSize: 13 }}>
+            style={{ marginLeft: 'auto', background: 'rgba(255,255,255,0.15)', border: 'none', color: '#fff', borderRadius: 7, padding: '6px 12px', cursor: 'pointer', fontSize: 12 }}>
             Clear
           </button>
         </div>
       )}
 
-      {/* Table */}
-      <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
-        <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-          <thead>
-            <tr style={{ background: '#fafafa', borderBottom: '1px solid #f0f0f0' }}>
-              <th style={{ padding: '12px 16px', width: 40 }}>
-                <input type="checkbox" checked={allSelected} onChange={toggleAll} style={{ cursor: 'pointer', width: 15, height: 15 }} />
-              </th>
-              {['Name', 'Phone', 'Source', 'Budget', 'Stage', 'Assigned To', 'Date'].map(h => (
-                <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {loading ? (
-              <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#aaa' }}>Loading...</td></tr>
-            ) : filtered.length === 0 ? (
-              <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#aaa' }}>No leads found</td></tr>
-            ) : filtered.map(lead => {
-              const isSelected = selected.has(lead.id);
-              return (
-                <tr key={lead.id} onClick={() => navigate(`/crm/leads/${lead.id}`)}
-                  style={{ borderBottom: '1px solid #f5f5f5', cursor: 'pointer', background: isSelected ? '#f0f4ff' : '', transition: 'background 0.1s' }}
-                  onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#fafbff'; }}
-                  onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = ''; }}>
-                  <td style={{ padding: '12px 16px' }} onClick={e => toggleOne(lead.id, e)}>
-                    <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', width: 15, height: 15 }} />
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
-                    <div style={{ fontWeight: 600, fontSize: 13, color: '#1a1a2e' }}>{lead.full_name}</div>
-                    {lead.email && <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>{lead.email}</div>}
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: '#555' }}>{lead.phone}</td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: '#555' }}>{lead.source}</td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: GOLD, fontWeight: 600 }}>
-                    {lead.budget ? `AED ${Number(lead.budget).toLocaleString()}` : '—'}
-                  </td>
-                  <td style={{ padding: '12px 16px' }}>
+      {/* Mobile: cards */}
+      {isMobile ? (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+          {loading ? (
+            <div style={{ padding: 40, textAlign: 'center', color: '#aaa' }}>Loading...</div>
+          ) : filtered.length === 0 ? (
+            <div style={{ padding: 40, textAlign: 'center', color: '#aaa' }}>No leads found</div>
+          ) : filtered.map(lead => {
+            const isSelected = selected.has(lead.id);
+            return (
+              <div key={lead.id}
+                onClick={() => navigate(`/crm/leads/${lead.id}`)}
+                style={{
+                  background: isSelected ? '#f0f4ff' : '#fff', borderRadius: 12,
+                  padding: '14px 16px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)',
+                  cursor: 'pointer', border: isSelected ? `1.5px solid ${NAVY}` : '1.5px solid transparent',
+                }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontWeight: 700, fontSize: 15, color: '#1a1a2e' }}>{lead.full_name}</div>
+                    <div style={{ fontSize: 13, color: '#666', marginTop: 2 }}>{lead.phone}</div>
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                     <span style={{ background: `${STAGE_COLORS[lead.stage]}20`, color: STAGE_COLORS[lead.stage], borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 600 }}>
                       {STAGE_LABELS[lead.stage] || lead.stage}
                     </span>
-                  </td>
-                  <td style={{ padding: '12px 16px', fontSize: 13, color: '#555' }}>{lead.assigned_to_name || '—'}</td>
-                  <td style={{ padding: '12px 16px', fontSize: 12, color: '#aaa' }}>{new Date(lead.created_at).toLocaleDateString()}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-      </div>
+                    <input type="checkbox" checked={isSelected} onChange={() => {}} onClick={e => toggleOne(lead.id, e)} style={{ cursor: 'pointer', width: 16, height: 16 }} />
+                  </div>
+                </div>
+                <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: 12, color: '#888' }}>{lead.source}</span>
+                  {lead.budget && <span style={{ fontSize: 12, color: GOLD, fontWeight: 600 }}>AED {Number(lead.budget).toLocaleString()}</span>}
+                  {lead.assigned_to_name && <span style={{ fontSize: 12, color: '#888' }}>→ {lead.assigned_to_name}</span>}
+                  <span style={{ fontSize: 12, color: '#bbb', marginLeft: 'auto' }}>{new Date(lead.created_at).toLocaleDateString()}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        /* Desktop: table */
+        <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 6px rgba(0,0,0,0.07)', overflow: 'hidden' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#fafafa', borderBottom: '1px solid #f0f0f0' }}>
+                <th style={{ padding: '12px 16px', width: 40 }}>
+                  <input type="checkbox" checked={allSelected} onChange={toggleAll} style={{ cursor: 'pointer', width: 15, height: 15 }} />
+                </th>
+                {['Name', 'Phone', 'Source', 'Budget', 'Stage', 'Assigned To', 'Date'].map(h => (
+                  <th key={h} style={{ padding: '12px 16px', textAlign: 'left', fontSize: 11, fontWeight: 600, color: '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading ? (
+                <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#aaa' }}>Loading...</td></tr>
+              ) : filtered.length === 0 ? (
+                <tr><td colSpan={8} style={{ padding: 40, textAlign: 'center', color: '#aaa' }}>No leads found</td></tr>
+              ) : filtered.map(lead => {
+                const isSelected = selected.has(lead.id);
+                return (
+                  <tr key={lead.id} onClick={() => navigate(`/crm/leads/${lead.id}`)}
+                    style={{ borderBottom: '1px solid #f5f5f5', cursor: 'pointer', background: isSelected ? '#f0f4ff' : '', transition: 'background 0.1s' }}
+                    onMouseEnter={e => { if (!isSelected) e.currentTarget.style.background = '#fafbff'; }}
+                    onMouseLeave={e => { if (!isSelected) e.currentTarget.style.background = ''; }}>
+                    <td style={{ padding: '12px 16px' }} onClick={e => toggleOne(lead.id, e)}>
+                      <input type="checkbox" checked={isSelected} onChange={() => {}} style={{ cursor: 'pointer', width: 15, height: 15 }} />
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <div style={{ fontWeight: 600, fontSize: 13, color: '#1a1a2e' }}>{lead.full_name}</div>
+                      {lead.email && <div style={{ fontSize: 11, color: '#aaa', marginTop: 2 }}>{lead.email}</div>}
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#555' }}>{lead.phone}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#555' }}>{lead.source}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: GOLD, fontWeight: 600 }}>
+                      {lead.budget ? `AED ${Number(lead.budget).toLocaleString()}` : '—'}
+                    </td>
+                    <td style={{ padding: '12px 16px' }}>
+                      <span style={{ background: `${STAGE_COLORS[lead.stage]}20`, color: STAGE_COLORS[lead.stage], borderRadius: 20, padding: '3px 10px', fontSize: 11, fontWeight: 600 }}>
+                        {STAGE_LABELS[lead.stage] || lead.stage}
+                      </span>
+                    </td>
+                    <td style={{ padding: '12px 16px', fontSize: 13, color: '#555' }}>{lead.assigned_to_name || '—'}</td>
+                    <td style={{ padding: '12px 16px', fontSize: 12, color: '#aaa' }}>{new Date(lead.created_at).toLocaleDateString()}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {showImport && (
         <ImportModal

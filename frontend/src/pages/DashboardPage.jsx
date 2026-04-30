@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../AuthContext';
 import api from '../api';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import useIsMobile from '../hooks/useIsMobile';
 
 const NAVY = '#0A2342';
 const GOLD = '#C9A84C';
@@ -32,6 +33,7 @@ function StatCard({ label, value, color, icon }) {
 
 export default function DashboardPage() {
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [stats, setStats] = useState(null);
   const [adminData, setAdminData] = useState(null);
 
@@ -68,13 +70,13 @@ export default function DashboardPage() {
         <StatCard label="Junk / Lost" value={(stats.closed_lost || 0) + (stats.junk || 0)} color="#ef4444" icon="❌" />
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 28 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20, marginBottom: 28 }}>
         {/* Stage bar chart */}
         <div style={{ background: '#fff', borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 6px rgba(0,0,0,0.07)' }}>
           <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Leads by Stage</h3>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={stageData}>
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+              <XAxis dataKey="name" tick={{ fontSize: isMobile ? 9 : 11 }} />
               <YAxis tick={{ fontSize: 11 }} />
               <Tooltip />
               <Bar dataKey="value" radius={[4, 4, 0, 0]}>
@@ -102,7 +104,7 @@ export default function DashboardPage() {
 
       {/* Admin section */}
       {adminData && (
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: 20 }}>
           <div style={{ background: '#fff', borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 6px rgba(0,0,0,0.07)' }}>
             <h3 style={{ fontSize: 15, fontWeight: 600, marginBottom: 16 }}>Broker Performance</h3>
             {adminData.broker_performance?.map(b => (

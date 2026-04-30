@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import api from '../api';
 import toast from 'react-hot-toast';
 import { useAuth } from '../AuthContext';
+import useIsMobile from '../hooks/useIsMobile';
 
 const NAVY = '#0A2342';
 const GOLD = '#C9A84C';
@@ -30,6 +31,7 @@ export default function LeadDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [lead, setLead] = useState(null);
   const [loading, setLoading] = useState(true);
   const [actText, setActText] = useState('');
@@ -104,7 +106,7 @@ export default function LeadDetailPage() {
   const currentStage = STAGES.find(s => s.key === lead.stage) || STAGES[0];
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0' : undefined }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
         <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#888' }}>←</button>
@@ -122,7 +124,7 @@ export default function LeadDetailPage() {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 20 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 380px', gap: 16 }}>
         {/* Left column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
           {/* Stage pipeline */}
