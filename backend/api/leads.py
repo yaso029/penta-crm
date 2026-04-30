@@ -6,6 +6,8 @@ from datetime import datetime
 from backend.database.db import get_db
 from backend.database.models import User, Lead, Activity
 from backend.services.auth_service import get_current_user, require_admin, require_admin_or_team_leader
+from backend.services import meta_capi_service
+import asyncio
 
 router = APIRouter(prefix="/api/leads", tags=["leads"])
 
@@ -192,7 +194,7 @@ def update_lead(lead_id: int, req: UpdateLeadRequest, current_user: User = Depen
 
 
 @router.patch("/{lead_id}/stage")
-def update_stage(lead_id: int, req: StageUpdateRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+async def update_stage(lead_id: int, req: StageUpdateRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     valid_stages = ["new_lead", "follow_up", "no_answer", "pre_meeting", "meeting_done", "deal_closed", "not_interested", "wrong_number", "junk"]
     if req.stage not in valid_stages:
         raise HTTPException(status_code=400, detail="Invalid stage")
@@ -212,6 +214,7 @@ def update_stage(lead_id: int, req: StageUpdateRequest, current_user: User = Dep
     db.add(activity)
     db.commit()
     db.refresh(lead)
+    asyncio.create_task(meta_capi_service.send_stage_event(lead))
     return lead_to_dict(lead)
 
 
