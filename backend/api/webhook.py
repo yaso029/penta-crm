@@ -153,10 +153,10 @@ async def fetch_meta_lead(leadgen_id: str) -> Optional[dict]:
         data = resp.json()
         parsed = {item["name"]: item["values"][0] for item in data.get("field_data", []) if item.get("values")}
 
-        # Try to get the form name
+        # Always fetch the actual form name from form_id
         form_id = data.get("form_id")
-        form_name = data.get("ad_name")
-        if form_id and not form_name:
+        form_name = None
+        if form_id:
             r2 = await client.get(
                 f"https://graph.facebook.com/v18.0/{form_id}",
                 params={"fields": "name", "access_token": META_PAGE_ACCESS_TOKEN}
