@@ -9,9 +9,11 @@ const GOLD = '#C9A84C';
 
 const STAGES = [
   { key: 'new_lead', label: 'New Lead', color: '#6366f1' },
-  { key: 'contacted', label: 'Contacted', color: '#3b82f6' },
   { key: 'follow_up', label: 'Follow Up', color: '#f59e0b' },
   { key: 'no_answer', label: 'No Answer', color: '#64748b' },
+  { key: 'pre_meeting', label: 'Pre Meeting', color: '#8b5cf6' },
+  { key: 'meeting_done', label: 'Meeting Done', color: '#06b6d4' },
+  { key: 'deal_closed', label: 'Deal Closed', color: '#10b981' },
   { key: 'not_interested', label: 'Not Interested', color: '#f97316' },
   { key: 'wrong_number', label: 'Wrong Number', color: '#ec4899' },
   { key: 'junk', label: 'Junk', color: '#ef4444' },

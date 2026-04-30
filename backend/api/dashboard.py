@@ -20,8 +20,8 @@ def get_stats(current_user: User = Depends(get_current_user), db: Session = Depe
 
     total = base.count()
     new_leads = base.filter(Lead.stage == "new_lead").count()
-    active = base.filter(Lead.stage.in_(["contacted", "follow_up"])).count()
-    closed_won = base.filter(Lead.stage == "not_interested").count()
+    active = base.filter(Lead.stage.in_(["follow_up", "pre_meeting", "meeting_done"])).count()
+    closed_won = base.filter(Lead.stage == "deal_closed").count()
     closed_lost = base.filter(Lead.stage.in_(["junk", "wrong_number", "no_answer"])).count()
 
     stage_counts = (

@@ -9,13 +9,15 @@ const NAVY = '#0A2342';
 const GOLD = '#C9A84C';
 
 const STAGE_COLORS = {
-  new_lead: '#6366f1', contacted: '#3b82f6', follow_up: '#f59e0b',
-  no_answer: '#64748b', not_interested: '#f97316', wrong_number: '#ec4899', junk: '#ef4444',
+  new_lead: '#6366f1', follow_up: '#f59e0b', no_answer: '#64748b',
+  pre_meeting: '#8b5cf6', meeting_done: '#06b6d4', deal_closed: '#10b981',
+  not_interested: '#f97316', wrong_number: '#ec4899', junk: '#ef4444',
 };
 
 const STAGE_LABELS = {
-  new_lead: 'New Lead', contacted: 'Contacted', follow_up: 'Follow Up',
-  no_answer: 'No Answer', not_interested: 'Not Interested', wrong_number: 'Wrong Number', junk: 'Junk',
+  new_lead: 'New Lead', follow_up: 'Follow Up', no_answer: 'No Answer',
+  pre_meeting: 'Pre Meeting', meeting_done: 'Meeting Done', deal_closed: 'Deal Closed',
+  not_interested: 'Not Interested', wrong_number: 'Wrong Number', junk: 'Junk',
 };
 
 const SOURCES = ['Meta Ads', 'Website', 'WhatsApp', 'Referral', 'Property Finder', 'Bayut', 'Walk-in', 'Other'];

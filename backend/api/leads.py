@@ -125,7 +125,7 @@ def kanban_board(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    stages = ["new_lead", "contacted", "follow_up", "no_answer", "not_interested", "wrong_number", "junk"]
+    stages = ["new_lead", "follow_up", "no_answer", "pre_meeting", "meeting_done", "deal_closed", "not_interested", "wrong_number", "junk"]
     query = get_leads_query(current_user, db)
     leads = query.order_by(Lead.updated_at.desc()).all()
     board = {stage: [] for stage in stages}
@@ -193,7 +193,7 @@ def update_lead(lead_id: int, req: UpdateLeadRequest, current_user: User = Depen
 
 @router.patch("/{lead_id}/stage")
 def update_stage(lead_id: int, req: StageUpdateRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
-    valid_stages = ["new_lead", "contacted", "follow_up", "no_answer", "not_interested", "wrong_number", "junk"]
+    valid_stages = ["new_lead", "follow_up", "no_answer", "pre_meeting", "meeting_done", "deal_closed", "not_interested", "wrong_number", "junk"]
     if req.stage not in valid_stages:
         raise HTTPException(status_code=400, detail="Invalid stage")
     query = get_leads_query(current_user, db)
@@ -282,7 +282,7 @@ def bulk_action(req: BulkActionRequest, current_user: User = Depends(get_current
     if not req.lead_ids:
         raise HTTPException(status_code=400, detail="No leads selected")
 
-    valid_stages = ["new_lead", "contacted", "follow_up", "no_answer", "not_interested", "wrong_number", "junk"]
+    valid_stages = ["new_lead", "follow_up", "no_answer", "pre_meeting", "meeting_done", "deal_closed", "not_interested", "wrong_number", "junk"]
     accessible = get_leads_query(current_user, db)
     leads = accessible.filter(Lead.id.in_(req.lead_ids)).all()
 
