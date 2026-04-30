@@ -8,6 +8,7 @@ from backend.database import models
 from backend.database.db import SessionLocal
 from backend.services.auth_service import hash_password
 from backend.api import auth, users, leads, webhook, notifications, dashboard, import_leads, customers
+from backend.services.sync_scheduler import start_scheduler, stop_scheduler
 from backend.api import partners, whatsapp_routes, email_routes, commissions, partnerships_dashboard
 import os
 
@@ -68,6 +69,12 @@ def seed_admin():
 def startup():
     Base.metadata.create_all(bind=engine)
     seed_admin()
+    start_scheduler()
+
+
+@app.on_event("shutdown")
+def shutdown():
+    stop_scheduler()
 
 
 @app.get("/")

@@ -92,6 +92,16 @@ class Customer(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class SyncLog(Base):
+    __tablename__ = "sync_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    synced_count = Column(Integer, default=0)
+    failed_count = Column(Integer, default=0)
+    triggered_by = Column(String(20), default="auto")
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 # ─── Partnership Models ───────────────────────────────────────────────────────
 
 class Partner(Base):
