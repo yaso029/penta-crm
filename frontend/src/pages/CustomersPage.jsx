@@ -6,20 +6,74 @@ import useIsMobile from '../hooks/useIsMobile';
 const NAVY = '#0A2342';
 const GOLD = '#C9A84C';
 
+const EMPTY_VALUES = new Set(['null', 'n/a', 'na', 'none', '-', '--', '', 'undefined', '#n/a', 'nil']);
+
+function cleanValue(v) {
+  const s = (v || '').toString().trim().replace(/^"|"$/g, '').trim();
+  return EMPTY_VALUES.has(s.toLowerCase()) ? '' : s;
+}
+
+function formatPhone(raw) {
+  if (!raw) return '';
+  // Remove everything except digits and leading +
+  let digits = raw.replace(/[^\d+]/g, '');
+  // Remove leading +
+  digits = digits.replace(/^\+/, '');
+  // Remove leading 00
+  if (digits.startsWith('00')) digits = digits.slice(2);
+  // UAE: starts with 0 followed by 5 (e.g. 0501234567) → 971501234567
+  if (digits.startsWith('05')) digits = '971' + digits.slice(1);
+  // Starts with 5 and length ~9 → UAE mobile
+  if (digits.startsWith('5') && digits.length === 9) digits = '971' + digits;
+  // Starts with 971 already → keep
+  // Add + prefix
+  return '+' + digits;
+}
+
+function splitCSVLine(line) {
+  const result = [];
+  let cur = '', inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') { inQuotes = !inQuotes; continue; }
+    if (ch === ',' && !inQuotes) { result.push(cur); cur = ''; continue; }
+    cur += ch;
+  }
+  result.push(cur);
+  return result;
+}
+
 function parseCSV(text) {
-  const lines = text.trim().split('\n');
-  if (lines.length < 2) return [];
-  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/[^a-z_]/g, ''));
-  return lines.slice(1).map(line => {
-    const vals = line.split(',').map(v => v.trim().replace(/^"|"$/g, ''));
+  const lines = text.trim().split(/\r?\n/);
+  if (lines.length < 2) return { rows: [], skipped: 0 };
+  const headers = splitCSVLine(lines[0]).map(h => h.trim().toLowerCase().replace(/[^a-z0-9_]/g, ''));
+
+  let skipped = 0;
+  const rows = [];
+
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const vals = splitCSVLine(lines[i]);
     const row = {};
-    headers.forEach((h, i) => { row[h] = vals[i] || ''; });
-    return {
-      full_name: row['full_name'] || row['name'] || row['fullname'] || '',
-      phone: row['phone'] || row['phone_number'] || row['mobile'] || '',
-      email: row['email'] || '',
-    };
-  }).filter(r => r.full_name);
+    headers.forEach((h, idx) => { row[h] = cleanValue(vals[idx]); });
+
+    const name = row['full_name'] || row['name'] || row['fullname'] || row['client_name'] || row['customer_name'] || '';
+    const rawPhone = row['phone'] || row['phone_number'] || row['mobile'] || row['tel'] || row['telephone'] || '';
+    const email = row['email'] || row['email_address'] || '';
+
+    if (!name) { skipped++; continue; }
+
+    const phone = rawPhone ? formatPhone(rawPhone) : '';
+    const validPhone = phone.length >= 10;
+    const validEmail = email.includes('@');
+
+    // Must have name + (valid phone OR valid email)
+    if (!validPhone && !validEmail) { skipped++; continue; }
+
+    rows.push({ full_name: name, phone: validPhone ? phone : '', email: validEmail ? email : '' });
+  }
+
+  return { rows, skipped };
 }
 
 export default function CustomersPage() {
@@ -45,11 +99,15 @@ export default function CustomersPage() {
     const file = e.target.files[0];
     if (!file) return;
     const text = await file.text();
-    const parsed = parseCSV(text);
-    if (!parsed.length) { toast.error('No valid rows found. Make sure CSV has a "name" or "full_name" column.'); return; }
+    const { rows, skipped } = parseCSV(text);
+    if (!rows.length) {
+      toast.error('No valid rows found. Each row needs a name + phone or email.');
+      e.target.value = '';
+      return;
+    }
     try {
-      const { data: res } = await api.post('/api/customers/import', { customers: parsed });
-      toast.success(`${res.added} customers imported`);
+      const { data: res } = await api.post('/api/customers/import', { customers: rows });
+      toast.success(`${res.added} imported, ${skipped} skipped (missing contact info)`);
       fetchData();
     } catch { toast.error('Import failed'); }
     e.target.value = '';
@@ -144,7 +202,7 @@ export default function CustomersPage() {
 
       {/* CSV format hint */}
       <div style={{ background: '#f0f4ff', borderRadius: 10, padding: '12px 16px', marginBottom: 16, fontSize: 12, color: '#555', border: '1px solid #dde8ff' }}>
-        <strong>CSV format:</strong> Your file should have columns named <code>name</code> (or <code>full_name</code>), <code>phone</code>, <code>email</code>. Other columns are ignored.
+        <strong>CSV format:</strong> Columns: <code>name</code>, <code>phone</code>, <code>email</code> (other columns ignored). Rows kept only if they have name + phone or name + email. Phone numbers auto-formatted to international format. Null/empty/N/A values handled automatically.
       </div>
 
       {/* Search */}
