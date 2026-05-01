@@ -69,14 +69,14 @@ def seed_admin():
 
 
 @app.on_event("startup")
-def startup():
+async def startup():
     Base.metadata.create_all(bind=engine)
     seed_admin()
     start_scheduler()
 
 
 @app.on_event("shutdown")
-def shutdown():
+async def shutdown():
     stop_scheduler()
 
 

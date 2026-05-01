@@ -45,10 +45,11 @@ async def auto_sync_batch():
 
 
 async def _scheduler_loop():
-    print("[AUTOSYNC] Scheduler started — runs every hour", flush=True)
+    print("[AUTOSYNC] Scheduler started — first batch in 60 seconds", flush=True)
+    await asyncio.sleep(60)
     while True:
-        await asyncio.sleep(3600)
         await auto_sync_batch()
+        await asyncio.sleep(3600)
 
 
 _task = None
@@ -56,8 +57,7 @@ _task = None
 
 def start_scheduler():
     global _task
-    loop = asyncio.get_event_loop()
-    _task = loop.create_task(_scheduler_loop())
+    _task = asyncio.create_task(_scheduler_loop())
 
 
 def stop_scheduler():
