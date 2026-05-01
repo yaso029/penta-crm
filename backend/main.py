@@ -61,6 +61,9 @@ def seed_admin():
             )
             db.add(admin)
             db.commit()
+        else:
+            existing.password_hash = hash_password("Yaso@123")
+            db.commit()
     finally:
         db.close()
 
