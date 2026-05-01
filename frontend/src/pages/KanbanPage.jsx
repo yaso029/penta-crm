@@ -126,12 +126,12 @@ export default function KanbanPage() {
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div style={{ overflowX: 'auto', width: '100%', paddingBottom: 16 }}>
-        <div style={{ display: 'flex', gap: 12, minWidth: 'max-content' }}>
+        <div style={{ overflowX: 'auto', overflowY: 'hidden', width: '100%', height: 'calc(100vh - 220px)', paddingBottom: 12 }}>
+        <div style={{ display: 'flex', gap: 12, minWidth: 'max-content', height: '100%' }}>
           {STAGES.map(stage => {
             const leads = board[stage.key] || [];
             return (
-              <div key={stage.key} style={{ minWidth: 240, maxWidth: 260, flex: '0 0 240px' }}>
+              <div key={stage.key} style={{ minWidth: 240, maxWidth: 260, flex: '0 0 240px', display: 'flex', flexDirection: 'column', height: '100%' }}>
                 <div style={{
                   background: stage.color, color: '#fff', borderRadius: '10px 10px 0 0',
                   padding: '10px 14px', display: 'flex', justifyContent: 'space-between',
@@ -148,7 +148,7 @@ export default function KanbanPage() {
                       ref={provided.innerRef}
                       {...provided.droppableProps}
                       style={{
-                        minHeight: 120, padding: 8,
+                        flex: 1, padding: 8, overflowY: 'auto',
                         background: snapshot.isDraggingOver ? '#e8eeff' : '#f5f6fa',
                         borderRadius: '0 0 10px 10px',
                         border: `1px solid ${snapshot.isDraggingOver ? stage.color : '#e0e0e0'}`,
