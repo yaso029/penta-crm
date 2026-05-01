@@ -126,7 +126,8 @@ export default function KanbanPage() {
       </div>
 
       <DragDropContext onDragEnd={onDragEnd}>
-        <div style={{ display: 'flex', gap: 12, overflowX: 'auto', paddingBottom: 16 }}>
+        <div style={{ overflowX: 'auto', width: '100%', paddingBottom: 16 }}>
+        <div style={{ display: 'flex', gap: 12, minWidth: 'max-content' }}>
           {STAGES.map(stage => {
             const leads = board[stage.key] || [];
             return (
@@ -169,6 +170,7 @@ export default function KanbanPage() {
               </div>
             );
           })}
+        </div>
         </div>
       </DragDropContext>
     </div>
