@@ -288,7 +288,7 @@ export default function Layout() {
           </div>
         </header>
 
-        <main style={{ flex: 1, padding: 28 }}>
+        <main style={{ flex: 1, padding: 28, overflowX: 'auto' }}>
           <Outlet />
         </main>
       </div>

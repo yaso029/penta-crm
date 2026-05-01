@@ -149,6 +149,7 @@ async def import_leads(
 
     created = 0
     skipped = 0
+    duplicates = 0
     errors = []
 
     for i, data in enumerate(leads_data):
@@ -156,6 +157,26 @@ async def import_leads(
             if not data.get("full_name") and not data.get("phone"):
                 skipped += 1
                 continue
+
+            # Duplicate check by name, phone, or email
+            name = data.get("full_name", "").strip()
+            phone = data.get("phone", "").strip()
+            email = data.get("email", "").strip()
+
+            from sqlalchemy import or_
+            conditions = []
+            if name:
+                conditions.append(Lead.full_name.ilike(name))
+            if phone:
+                conditions.append(Lead.phone == phone)
+            if email:
+                conditions.append(Lead.email == email)
+
+            if conditions:
+                existing = db.query(Lead).filter(or_(*conditions)).first()
+                if existing:
+                    duplicates += 1
+                    continue
 
             lead = Lead(
                 full_name=data.get("full_name", "Unknown"),
@@ -191,5 +212,6 @@ async def import_leads(
         "ok": True,
         "created": created,
         "skipped": skipped,
+        "duplicates": duplicates,
         "errors": errors[:10],
     }

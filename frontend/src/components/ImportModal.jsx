@@ -62,6 +62,9 @@ export default function ImportModal({ onClose, onImported }) {
         onImported();
         toast.success(`${data.created} leads imported!`);
       }
+      if (data.duplicates > 0) {
+        toast(`${data.duplicates} duplicate${data.duplicates > 1 ? 's' : ''} skipped`, { icon: '⚠️' });
+      }
     } catch (err) {
       toast.error(err.response?.data?.detail || 'Import failed');
     } finally {
@@ -95,6 +98,11 @@ export default function ImportModal({ onClose, onImported }) {
             <div style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e', marginBottom: 8 }}>
               {result.created} leads imported
             </div>
+            {result.duplicates > 0 && (
+              <div style={{ fontSize: 14, color: '#f59e0b', marginBottom: 8, fontWeight: 600 }}>
+                ⚠️ {result.duplicates} duplicate{result.duplicates > 1 ? 's' : ''} found and skipped
+              </div>
+            )}
             {result.skipped > 0 && (
               <div style={{ fontSize: 14, color: '#888', marginBottom: 8 }}>{result.skipped} rows skipped</div>
             )}
