@@ -241,7 +241,7 @@ export default function Layout() {
         </div>
       </aside>
 
-      <div style={{ marginLeft: 240, flex: 1, display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+      <div style={{ marginLeft: 240, flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', minHeight: '100vh', overflow: 'hidden' }}>
         <header style={{
           height: 60, background: '#fff', borderBottom: '1px solid #e8e8e8',
           display: 'flex', alignItems: 'center', justifyContent: 'flex-end',
@@ -288,7 +288,7 @@ export default function Layout() {
           </div>
         </header>
 
-        <main style={{ flex: 1, padding: 28, overflowX: 'auto' }}>
+        <main style={{ flex: 1, padding: 28, overflow: 'hidden' }}>
           <Outlet />
         </main>
       </div>
