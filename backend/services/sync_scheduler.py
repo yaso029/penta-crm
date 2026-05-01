@@ -1,12 +1,9 @@
 import random
 import asyncio
 from datetime import datetime
-from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from backend.database.db import SessionLocal
 from backend.database.models import Customer, SyncLog
 from backend.services import meta_capi_service
-
-scheduler = AsyncIOScheduler()
 
 
 async def auto_sync_batch():
@@ -47,11 +44,23 @@ async def auto_sync_batch():
         db.close()
 
 
-def start_scheduler():
-    scheduler.add_job(auto_sync_batch, "interval", hours=1, id="auto_sync", replace_existing=True)
-    scheduler.start()
+async def _scheduler_loop():
     print("[AUTOSYNC] Scheduler started — runs every hour", flush=True)
+    while True:
+        await asyncio.sleep(3600)
+        await auto_sync_batch()
+
+
+_task = None
+
+
+def start_scheduler():
+    global _task
+    loop = asyncio.get_event_loop()
+    _task = loop.create_task(_scheduler_loop())
 
 
 def stop_scheduler():
-    scheduler.shutdown()
+    global _task
+    if _task:
+        _task.cancel()
