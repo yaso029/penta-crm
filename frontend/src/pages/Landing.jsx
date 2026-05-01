@@ -50,10 +50,12 @@ const MODULES = [
     key: 'agents',
     icon: '📊',
     title: 'Agents Dashboard',
-    subtitle: 'Agent Performance & Analytics',
-    desc: 'View individual agent KPIs, conversion rates, deal history, and performance rankings.',
+    subtitle: 'Property Vault, Events & Resources',
+    desc: 'Browse property listings, view promotions, developer events, training videos and team resources.',
     accent: '#dc2626',
-    type: 'coming_soon',
+    type: 'active',
+    path: '/agents',
+    adminOnly: false,
   },
 ];
 

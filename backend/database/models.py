@@ -202,3 +202,80 @@ class Commission(Base):
 
     partner = relationship("Partner", back_populates="commissions")
     lead = relationship("Lead", back_populates="commissions")
+
+
+# ─── Agents Dashboard Models ──────────────────────────────────────────────────
+
+class Property(Base):
+    __tablename__ = "properties"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(300), nullable=False)
+    description = Column(Text, nullable=True)
+    property_type = Column(String(50), nullable=False)
+    transaction_type = Column(String(50), nullable=False)
+    location = Column(String(200), nullable=False)
+    price = Column(Float, nullable=True)
+    bedrooms = Column(Integer, nullable=True)
+    bathrooms = Column(Integer, nullable=True)
+    area_sqft = Column(Float, nullable=True)
+    floor = Column(Integer, nullable=True)
+    amenities = Column(JSON, nullable=True)
+    images = Column(JSON, nullable=True)
+    status = Column(String(30), default="available")
+    developer = Column(String(200), nullable=True)
+    project_name = Column(String(200), nullable=True)
+    handover_date = Column(String(100), nullable=True)
+    payment_plan = Column(Text, nullable=True)
+    uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    uploader = relationship("User", foreign_keys=[uploaded_by])
+
+
+class AgentEvent(Base):
+    __tablename__ = "agent_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(300), nullable=False)
+    description = Column(Text, nullable=True)
+    event_type = Column(String(50), default="other")
+    event_date = Column(DateTime, nullable=True)
+    location = Column(String(200), nullable=True)
+    image_url = Column(String(500), nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    creator = relationship("User", foreign_keys=[created_by])
+
+
+class AgentVideo(Base):
+    __tablename__ = "agent_videos"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(300), nullable=False)
+    description = Column(Text, nullable=True)
+    youtube_url = Column(String(500), nullable=False)
+    category = Column(String(50), default="other")
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    creator = relationship("User", foreign_keys=[created_by])
+
+
+class AgentPromotion(Base):
+    __tablename__ = "agent_promotions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(300), nullable=False)
+    description = Column(Text, nullable=True)
+    developer = Column(String(200), nullable=True)
+    discount_percent = Column(Float, nullable=True)
+    promo_details = Column(Text, nullable=True)
+    expires_at = Column(DateTime, nullable=True)
+    image_url = Column(String(500), nullable=True)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    creator = relationship("User", foreign_keys=[created_by])

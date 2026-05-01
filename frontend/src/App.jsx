@@ -4,6 +4,7 @@ import LoginPage from './pages/LoginPage';
 import Landing from './pages/Landing';
 import Layout from './components/Layout';
 import PartnershipsLayout from './components/PartnershipsLayout';
+import AgentsLayout from './components/AgentsLayout';
 import DashboardPage from './pages/DashboardPage';
 import KanbanPage from './pages/KanbanPage';
 import LeadsPage from './pages/LeadsPage';
@@ -16,6 +17,13 @@ import Outreach from './pages/partnerships/Outreach';
 import Templates from './pages/partnerships/Templates';
 import Replies from './pages/partnerships/Replies';
 import Commissions from './pages/partnerships/Commissions';
+import AgentsDashboard from './pages/agents/Dashboard';
+import PropertyVault from './pages/agents/PropertyVault';
+import PropertyDetail from './pages/agents/PropertyDetail';
+import ListProperty from './pages/agents/ListProperty';
+import Events from './pages/agents/Events';
+import Videos from './pages/agents/Videos';
+import Promotions from './pages/agents/Promotions';
 
 function PrivateRoute({ children, roles }) {
   const { user } = useAuth();
@@ -64,6 +72,17 @@ export default function App() {
         <Route path="templates" element={<Templates />} />
         <Route path="replies" element={<Replies />} />
         <Route path="commissions" element={<Commissions />} />
+      </Route>
+
+      {/* Agents Dashboard module */}
+      <Route path="/agents" element={<PrivateRoute><AgentsLayout /></PrivateRoute>}>
+        <Route index element={<AgentsDashboard />} />
+        <Route path="properties" element={<PropertyVault />} />
+        <Route path="properties/:id" element={<PropertyDetail />} />
+        <Route path="list-property" element={<ListProperty />} />
+        <Route path="events" element={<Events />} />
+        <Route path="videos" element={<Videos />} />
+        <Route path="promotions" element={<Promotions />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
