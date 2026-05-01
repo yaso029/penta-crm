@@ -91,8 +91,11 @@ async def check_template_status(template_name: str) -> dict:
         if resp.status_code != 200:
             return {"error": data.get("error", {}).get("message", f"Meta error {resp.status_code}")}
         templates = data.get("data", [])
+        print(f"[TEMPLATE CHECK] name={template_name} response={data}", flush=True)
         if templates:
-            return {"status": templates[0].get("status", "UNKNOWN"), "found": True}
+            t = templates[0]
+            print(f"[TEMPLATE CHECK] status={t.get('status')} reason={t.get('rejected_reason', 'none')}", flush=True)
+            return {"status": t.get("status", "UNKNOWN"), "found": True, "rejected_reason": t.get("rejected_reason")}
         return {"status": "NOT_FOUND", "found": False}
 
 
@@ -124,6 +127,7 @@ async def submit_template_to_meta(template_name: str, category: str, body: str, 
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(url, json=payload, headers=headers)
         data = resp.json()
+        print(f"[TEMPLATE SUBMIT] status={resp.status_code} payload={payload} response={data}", flush=True)
         if resp.status_code == 200:
             return {"ok": True, "template_id": data.get("id", "")}
-        return {"error": data.get("error", {}).get("message", "Submission failed")}
+        return {"error": data.get("error", {}).get("message", "Submission failed"), "detail": data}
