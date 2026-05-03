@@ -265,10 +265,34 @@ def _scrape_html_source(url: str) -> dict:
 def _scrape_og(url: str) -> dict:
     """Route to best scraper based on URL domain."""
     if "reelly.io" in url:
-        result = _scrape_reelly(url)
-        if result.get("title"):
-            return result
+        # Only use Reelly API — never fall back to HTML (HTML just returns generic "Offers for you")
+        return _scrape_reelly(url)
     return _scrape_html_source(url)
+
+
+@router.get("/debug/reelly/{project_id}")
+def debug_reelly(project_id: str, current_user=Depends(get_current_user)):
+    """Admin debug: show raw Reelly API response for a project ID."""
+    import os, httpx
+    email    = os.environ.get("REELLY_EMAIL", "agentyassinammary@gmail.com")
+    password = os.environ.get("REELLY_PASSWORD", "Penta@2024$$")
+    try:
+        login = httpx.post(
+            "https://api.reelly.io/api:sk5LT7jx/auth/login0",
+            json={"email": email, "password": password},
+            timeout=15,
+        )
+        if login.status_code != 200:
+            return {"step": "login_failed", "status": login.status_code, "body": login.text[:500]}
+        token = login.json().get("authToken")
+        proj = httpx.get(
+            f"https://api.reelly.io/api:sk5LT7jx/projects/{project_id}",
+            headers={"authToken": token},
+            timeout=15,
+        )
+        return {"step": "ok", "status": proj.status_code, "keys": list(proj.json().keys()) if proj.status_code == 200 else [], "body_preview": proj.text[:1000]}
+    except Exception as e:
+        return {"step": "exception", "error": str(e)}
 
 
 @router.post("/fetch-link")
