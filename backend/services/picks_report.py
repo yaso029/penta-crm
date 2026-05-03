@@ -1,5 +1,5 @@
 """
-Branded PDF report: client brief + agent-curated property list.
+Branded PDF brochure: client brief + agent-curated property cards with images.
 """
 import io
 import re
@@ -11,216 +11,259 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.platypus import (
     SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle,
-    HRFlowable, KeepTogether,
+    HRFlowable, KeepTogether, Image as RLImage,
 )
-from reportlab.platypus import Image as RLImage
 from reportlab.lib.enums import TA_LEFT, TA_CENTER, TA_RIGHT
 
-GOLD = colors.HexColor("#C9A84C")
-NAVY = colors.HexColor("#0A2342")
-LIGHT_GRAY = colors.HexColor("#F4F6F9")
-MID_GRAY = colors.HexColor("#888888")
-TEXT = colors.HexColor("#1a1a2e")
+GOLD   = colors.HexColor("#C9A84C")
+NAVY   = colors.HexColor("#0A2342")
+LGRAY  = colors.HexColor("#F4F6F9")
+MGRAY  = colors.HexColor("#94A3B8")
+TEXT   = colors.HexColor("#1E293B")
+WHITE  = colors.white
 
-W, H = A4
-MARGIN = 18 * mm
-
-
-def _fmt_price(v):
-    if not v:
-        return "Price on request"
-    if v >= 1_000_000:
-        return f"AED {v / 1_000_000:.2f}M"
-    return f"AED {int(v):,}"
+W, H   = A4
+MARGIN = 16 * mm
+INNER  = W - 2 * MARGIN
 
 
-def _fetch_image(url: str, max_w: float, max_h: float):
+# ─── Image fetcher ────────────────────────────────────────────────────────────
+
+def _fetch_rl_image(url: str, max_w_mm: float, max_h_mm: float):
+    """Download image URL → ReportLab Image sized to fit box, or None."""
     if not url:
         return None
+    max_w = max_w_mm * mm
+    max_h = max_h_mm * mm
+    headers = {"User-Agent": "Mozilla/5.0 (compatible; ReportLab/4.0)"}
     try:
         import httpx
-        resp = httpx.get(url, timeout=8, follow_redirects=True,
-                         headers={"User-Agent": "Mozilla/5.0"})
-        if resp.status_code != 200:
-            return None
         from PIL import Image as PILImage
-        img = PILImage.open(io.BytesIO(resp.content)).convert("RGB")
+        resp = httpx.get(url, timeout=10, follow_redirects=True, headers=headers)
+        if resp.status_code != 200 or len(resp.content) < 1000:
+            return None
+        pil = PILImage.open(io.BytesIO(resp.content)).convert("RGB")
         buf = io.BytesIO()
-        img.save(buf, format="JPEG", quality=75)
+        pil.save(buf, format="JPEG", quality=78, optimize=True)
         buf.seek(0)
-        rl_img = RLImage(buf)
-        ratio = min(max_w / rl_img.imageWidth, max_h / rl_img.imageHeight)
-        rl_img.drawWidth = rl_img.imageWidth * ratio
-        rl_img.drawHeight = rl_img.imageHeight * ratio
-        return rl_img
+        img = RLImage(buf)
+        ratio = min(max_w / img.imageWidth, max_h / img.imageHeight)
+        img.drawWidth  = img.imageWidth  * ratio
+        img.drawHeight = img.imageHeight * ratio
+        return img
     except Exception:
         return None
 
 
+# ─── Helpers ──────────────────────────────────────────────────────────────────
+
+def _fmt_price(v):
+    if not v:
+        return None
+    try:
+        v = float(v)
+    except Exception:
+        return str(v)
+    if v >= 1_000_000:
+        return f"AED {v / 1_000_000:.2f}M"
+    return f"AED {int(v):,}"
+
+def _p(text, style):
+    return Paragraph(str(text), style)
+
+
+# ─── Main generator ───────────────────────────────────────────────────────────
+
 def generate_picks_pdf(session, picks) -> bytes:
     buf = io.BytesIO()
     doc = SimpleDocTemplate(
-        buf,
-        pagesize=A4,
+        buf, pagesize=A4,
         leftMargin=MARGIN, rightMargin=MARGIN,
         topMargin=MARGIN, bottomMargin=MARGIN,
         title=f"Property Report — {session.client_name or 'Client'}",
     )
 
-    styles = getSampleStyleSheet()
+    ss = getSampleStyleSheet()
+    normal = ss["Normal"]
+
+    def style(**kw):
+        return ParagraphStyle("x", parent=normal, **kw)
+
     story = []
 
-    # ── Header ─────────────────────────────────────────────────────────────────
-    header_data = [[
-        Paragraph('<font color="#C9A84C" size="22"><b>P</b></font>', styles["Normal"]),
-        Paragraph(
-            '<font color="white" size="14"><b>Penta System</b></font><br/>'
-            '<font color="#C9A84C" size="7">REAL ESTATE PLATFORM</font>',
-            styles["Normal"]
-        ),
-        Paragraph(
-            f'<font color="white" size="8">Property Report<br/>'
-            f'{datetime.utcnow().strftime("%d %B %Y")}</font>',
-            ParagraphStyle("right", alignment=TA_RIGHT, fontName="Helvetica"),
-        ),
-    ]]
-    header_table = Table(header_data, colWidths=[14 * mm, 100 * mm, None])
-    header_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, -1), NAVY),
-        ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-        ("LEFTPADDING", (0, 0), (0, -1), 10),
-        ("LEFTPADDING", (1, 0), (1, -1), 6),
-        ("RIGHTPADDING", (-1, 0), (-1, -1), 12),
-        ("TOPPADDING", (0, 0), (-1, -1), 10),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
-        ("ROUNDEDCORNERS", [8]),
+    # ── Cover header ──────────────────────────────────────────────────────────
+    hdr = Table(
+        [[
+            _p('<font color="#C9A84C" size="26"><b>P</b></font>', normal),
+            _p('<font color="white" size="15"><b>Penta System</b></font><br/>'
+               '<font color="#C9A84C" size="7" >REAL ESTATE PLATFORM</font>', normal),
+            _p(f'<font color="white" size="9">Property Report<br/>'
+               f'{datetime.utcnow().strftime("%d %B %Y")}</font>',
+               style(alignment=TA_RIGHT)),
+        ]],
+        colWidths=[12*mm, 110*mm, None],
+    )
+    hdr.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0),(-1,-1), NAVY),
+        ("VALIGN",        (0,0),(-1,-1), "MIDDLE"),
+        ("LEFTPADDING",   (0,0),(0,-1),  8),
+        ("LEFTPADDING",   (1,0),(1,-1),  6),
+        ("RIGHTPADDING",  (-1,0),(-1,-1),14),
+        ("TOPPADDING",    (0,0),(-1,-1), 12),
+        ("BOTTOMPADDING", (0,0),(-1,-1), 12),
     ]))
-    story.append(header_table)
-    story.append(Spacer(1, 6 * mm))
+    story.append(hdr)
+    story.append(Spacer(1, 5*mm))
 
-    # ── Client profile card ────────────────────────────────────────────────────
-    def profile_row(label, value):
-        if not value:
+    # ── Client profile ────────────────────────────────────────────────────────
+    def pr(label, val):
+        if not val:
             return None
         return [
-            Paragraph(f'<font color="{MID_GRAY.hexval()}" size="8">{label}</font>', styles["Normal"]),
-            Paragraph(f'<font color="{TEXT.hexval()}" size="9"><b>{value}</b></font>', styles["Normal"]),
+            _p(f'<font color="#94A3B8" size="8">{label}</font>', normal),
+            _p(f'<font color="#1E293B" size="9"><b>{val}</b></font>', normal),
         ]
 
-    profile_rows = [
-        [Paragraph('<font color="white" size="10"><b>Client Profile</b></font>', styles["Normal"]), ""],
+    client_rows = [
+        [_p('<font color="white" size="10"><b>Client Profile</b></font>', normal), ""]
     ]
     for row in [
-        profile_row("Name", session.client_name),
-        profile_row("Phone", session.client_phone),
-        profile_row("Email", session.client_email),
-        profile_row("Budget", session.budget_aed),
-        profile_row("Property Type", session.property_type),
-        profile_row("Bedrooms", session.bedrooms),
-        profile_row("Preferred Areas", session.preferred_areas),
-        profile_row("Market Preference", session.market_preference),
-        profile_row("Purpose", session.purchase_purpose),
+        pr("Name",             session.client_name),
+        pr("Phone",            session.client_phone),
+        pr("Email",            session.client_email),
+        pr("Budget",           session.budget_aed),
+        pr("Property Type",    session.property_type),
+        pr("Bedrooms",         session.bedrooms),
+        pr("Preferred Areas",  session.preferred_areas),
+        pr("Market",           session.market_preference),
+        pr("Purpose",          session.purchase_purpose),
     ]:
         if row:
-            profile_rows.append(row)
+            client_rows.append(row)
 
-    usable_w = W - 2 * MARGIN
-    profile_table = Table(profile_rows, colWidths=[40 * mm, usable_w - 40 * mm])
-    profile_table.setStyle(TableStyle([
-        ("BACKGROUND", (0, 0), (-1, 0), NAVY),
-        ("BACKGROUND", (0, 1), (-1, -1), LIGHT_GRAY),
-        ("SPAN", (0, 0), (-1, 0)),
-        ("LEFTPADDING", (0, 0), (-1, -1), 10),
-        ("RIGHTPADDING", (0, 0), (-1, -1), 10),
-        ("TOPPADDING", (0, 0), (-1, -1), 6),
-        ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
-        ("ROUNDEDCORNERS", [6]),
-        ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#dddddd")),
-        ("LINEBELOW", (0, 0), (-1, 0), 2, GOLD),
+    ct = Table(client_rows, colWidths=[38*mm, INNER - 38*mm])
+    ct.setStyle(TableStyle([
+        ("BACKGROUND",    (0,0),(-1,0),  NAVY),
+        ("BACKGROUND",    (0,1),(-1,-1), LGRAY),
+        ("SPAN",          (0,0),(-1,0)),
+        ("LINEBELOW",     (0,0),(-1,0),  2, GOLD),
+        ("LEFTPADDING",   (0,0),(-1,-1), 10),
+        ("RIGHTPADDING",  (0,0),(-1,-1), 10),
+        ("TOPPADDING",    (0,0),(-1,-1), 6),
+        ("BOTTOMPADDING", (0,0),(-1,-1), 6),
+        ("BOX",           (0,0),(-1,-1), 0.5, colors.HexColor("#e2e8f0")),
     ]))
-    story.append(profile_table)
-    story.append(Spacer(1, 8 * mm))
+    story.append(ct)
+    story.append(Spacer(1, 7*mm))
 
-    # ── Section title ──────────────────────────────────────────────────────────
-    story.append(Paragraph(
-        f'<font color="{NAVY.hexval()}" size="12"><b>Curated Properties</b></font>'
-        f'<font color="{MID_GRAY.hexval()}" size="9"> — {len(picks)} options selected by your agent</font>',
-        styles["Normal"]
+    # ── Section heading ───────────────────────────────────────────────────────
+    story.append(Table(
+        [[
+            _p(f'<font color="#0A2342" size="12"><b>Curated Properties</b></font>', normal),
+            _p(f'<font color="#94A3B8" size="9">{len(picks)} options selected by your agent</font>',
+               style(alignment=TA_RIGHT)),
+        ]],
+        colWidths=[INNER * 0.6, INNER * 0.4],
     ))
-    story.append(Spacer(1, 4 * mm))
+    story.append(Spacer(1, 3*mm))
+    story.append(HRFlowable(width="100%", thickness=1.5, color=GOLD))
+    story.append(Spacer(1, 4*mm))
 
-    # ── Property cards ─────────────────────────────────────────────────────────
+    # ── Property cards ────────────────────────────────────────────────────────
+    IMG_W  = 68   # mm
+    IMG_H  = 52   # mm
+    TEXT_W = INNER - IMG_W*mm - 4*mm
+
     for i, pick in enumerate(picks):
-        img = _fetch_image(pick.image_url, max_w=55 * mm, max_h=42 * mm)
-
+        price_str  = _fmt_price(pick.price_aed)
+        title_str  = pick.title or f"Property {i+1}"
+        area_str   = pick.area or ""
         specs_parts = []
-        if pick.bedrooms:
-            specs_parts.append(f"🛏 {pick.bedrooms} BR")
-        if pick.bathrooms:
-            specs_parts.append(f"🚿 {pick.bathrooms} BA")
-        if pick.size_sqft:
-            specs_parts.append(f"📐 {int(pick.size_sqft):,} sqft")
-        specs_line = "   ".join(specs_parts) if specs_parts else ""
+        if pick.bedrooms:  specs_parts.append(f"🛏  {pick.bedrooms} BR")
+        if pick.bathrooms: specs_parts.append(f"🚿  {pick.bathrooms} BA")
+        if pick.size_sqft: specs_parts.append(f"📐  {int(pick.size_sqft):,} sqft")
+        specs_str = "    ".join(specs_parts)
+        notes_str  = pick.notes or ""
+        link_str   = (pick.listing_url or "")[:65] + ("…" if len(pick.listing_url or "") > 65 else "")
 
-        area_line = pick.area or ""
-        price_line = _fmt_price(pick.price_aed)
-        title_line = pick.title or pick.listing_url
-        notes_line = pick.notes or ""
-        link_text = pick.listing_url[:60] + ("…" if len(pick.listing_url) > 60 else "")
+        # Fetch image
+        img = _fetch_rl_image(pick.image_url, IMG_W, IMG_H) if pick.image_url else None
 
-        text_col = [
-            Paragraph(
-                f'<font color="{NAVY.hexval()}" size="11"><b>{i+1}. {title_line}</b></font>',
-                styles["Normal"]
-            ),
-            Spacer(1, 2 * mm),
-            Paragraph(
-                f'<font color="{GOLD.hexval()}" size="13"><b>{price_line}</b></font>',
-                styles["Normal"]
-            ),
-        ]
-        if specs_line:
-            text_col += [Spacer(1, 2 * mm), Paragraph(f'<font color="{TEXT.hexval()}" size="9">{specs_line}</font>', styles["Normal"])]
-        if area_line:
-            text_col += [Spacer(1, 1.5 * mm), Paragraph(f'<font color="{MID_GRAY.hexval()}" size="9">📍 {area_line}</font>', styles["Normal"])]
-        if notes_line:
-            text_col += [Spacer(1, 2 * mm), Paragraph(f'<font color="{MID_GRAY.hexval()}" size="8"><i>{notes_line}</i></font>', styles["Normal"])]
-        text_col += [
-            Spacer(1, 3 * mm),
-            Paragraph(f'<font color="#1155CC" size="7">{link_text}</font>', styles["Normal"]),
-        ]
-
-        if img:
-            card_data = [[img, text_col]]
-            col_widths = [58 * mm, usable_w - 62 * mm]
-        else:
-            card_data = [[text_col]]
-            col_widths = [usable_w]
-
-        card = Table(card_data, colWidths=col_widths)
-        card.setStyle(TableStyle([
-            ("BACKGROUND", (0, 0), (-1, -1), colors.white),
-            ("VALIGN", (0, 0), (-1, -1), "TOP"),
-            ("LEFTPADDING", (0, 0), (-1, -1), 8),
-            ("RIGHTPADDING", (0, 0), (-1, -1), 8),
-            ("TOPPADDING", (0, 0), (-1, -1), 8),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 8),
-            ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#e2e8f0")),
-            ("LINEBELOW", (0, 0), (0, 0), 2, GOLD) if img else ("LINEBELOW", (0, 0), (-1, 0), 0, colors.white),
-            ("ROUNDEDCORNERS", [6]),
+        # Number badge
+        badge = Table(
+            [[_p(f'<font color="white" size="9"><b>#{i+1}</b></font>', normal)]],
+            colWidths=[10*mm],
+        )
+        badge.setStyle(TableStyle([
+            ("BACKGROUND",    (0,0),(-1,-1), NAVY),
+            ("ALIGN",         (0,0),(-1,-1), "CENTER"),
+            ("TOPPADDING",    (0,0),(-1,-1), 4),
+            ("BOTTOMPADDING", (0,0),(-1,-1), 4),
         ]))
 
-        story.append(KeepTogether([card, Spacer(1, 4 * mm)]))
+        # Text block
+        txt = []
+        txt.append(_p(
+            f'<font color="#0A2342" size="12"><b>{title_str}</b></font>',
+            style(spaceAfter=3),
+        ))
+        if price_str:
+            txt.append(_p(
+                f'<font color="#C9A84C" size="15"><b>{price_str}</b></font>',
+                style(spaceAfter=4),
+            ))
+        if specs_str:
+            txt.append(_p(
+                f'<font color="#1E293B" size="9">{specs_str}</font>',
+                style(spaceAfter=3),
+            ))
+        if area_str:
+            txt.append(_p(
+                f'<font color="#64748B" size="9">📍  {area_str}</font>',
+                style(spaceAfter=3),
+            ))
+        if notes_str:
+            txt.append(_p(
+                f'<font color="#64748B" size="8"><i>{notes_str}</i></font>',
+                style(spaceAfter=4),
+            ))
+        txt.append(_p(
+            f'<font color="#1155CC" size="7">{link_str}</font>',
+            normal,
+        ))
 
-    # ── Footer ─────────────────────────────────────────────────────────────────
-    story.append(Spacer(1, 6 * mm))
-    story.append(HRFlowable(width="100%", thickness=1, color=colors.HexColor("#e2e8f0")))
-    story.append(Spacer(1, 3 * mm))
-    story.append(Paragraph(
-        f'<font color="{MID_GRAY.hexval()}" size="8">This report was prepared by Penta System on '
-        f'{datetime.utcnow().strftime("%d %B %Y")}. All property information was sourced from public listings. '
-        f'Prices are indicative and subject to change.</font>',
-        ParagraphStyle("footer", alignment=TA_CENTER, fontName="Helvetica"),
+        if img:
+            # Two-column: image left, text right
+            card_data = [[img, txt]]
+            col_w = [IMG_W*mm, TEXT_W]
+        else:
+            # Full-width text
+            card_data = [[txt]]
+            col_w = [INNER]
+
+        card = Table(card_data, colWidths=col_w)
+        card.setStyle(TableStyle([
+            ("BACKGROUND",    (0,0),(-1,-1), WHITE),
+            ("VALIGN",        (0,0),(-1,-1), "TOP"),
+            ("LEFTPADDING",   (0,0),(-1,-1), 8),
+            ("RIGHTPADDING",  (0,0),(-1,-1), 8),
+            ("TOPPADDING",    (0,0),(-1,-1), 10),
+            ("BOTTOMPADDING", (0,0),(-1,-1), 10),
+            ("BOX",           (0,0),(-1,-1), 0.5, colors.HexColor("#E2E8F0")),
+            ("LINEBELOW",     (0,0),(0,0 if img else -1), 3, GOLD),
+        ]))
+
+        story.append(KeepTogether([card, Spacer(1, 5*mm)]))
+
+    # ── Footer ────────────────────────────────────────────────────────────────
+    story.append(Spacer(1, 6*mm))
+    story.append(HRFlowable(width="100%", thickness=0.5, color=colors.HexColor("#E2E8F0")))
+    story.append(Spacer(1, 3*mm))
+    story.append(_p(
+        f'<font color="#94A3B8" size="7">This report was prepared by Penta System on '
+        f'{datetime.utcnow().strftime("%d %B %Y")}. Property details are sourced from '
+        f'publicly available listings and are subject to change. Not a contractual offer.</font>',
+        style(alignment=TA_CENTER),
     ))
 
     doc.build(story)

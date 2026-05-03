@@ -54,23 +54,106 @@ class FetchLinkRequest(BaseModel):
     url: str
 
 
-def _scrape_og(url: str) -> dict:
+def _parse_price(text: str):
+    m = re.search(r"AED\s*([\d,]+)", text, re.IGNORECASE)
+    if m:
+        try:
+            return float(m.group(1).replace(",", ""))
+        except ValueError:
+            pass
+    return None
+
+def _parse_beds(text: str):
+    m = re.search(r"(\d+)\s*(?:BR|Bed|Bedroom)", text, re.IGNORECASE)
+    if m:
+        return m.group(1)
+    if re.search(r"\bstudio\b", text, re.IGNORECASE):
+        return "Studio"
+    return None
+
+def _parse_sqft(text: str):
+    m = re.search(r"([\d,]+)\s*(?:sq\.?\s*ft|sqft)", text, re.IGNORECASE)
+    if m:
+        try:
+            return float(m.group(1).replace(",", ""))
+        except ValueError:
+            pass
+    return None
+
+def _fetch_html(url: str) -> str | None:
     headers = {
         "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                       "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
         "Accept-Language": "en-US,en;q=0.9",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
     }
     try:
         from curl_cffi import requests as cffi_req
-        resp = cffi_req.get(url, headers=headers, timeout=12, impersonate="chrome124")
-        html = resp.text
+        resp = cffi_req.get(url, headers=headers, timeout=14, impersonate="chrome124")
+        return resp.text
     except Exception:
-        try:
-            import httpx
-            resp = httpx.get(url, headers=headers, timeout=12, follow_redirects=True)
-            html = resp.text
-        except Exception:
+        pass
+    try:
+        import httpx
+        resp = httpx.get(url, headers=headers, timeout=14, follow_redirects=True)
+        return resp.text
+    except Exception:
+        return None
+
+def _scrape_reelly(url: str) -> dict:
+    """Use Reelly API directly — much better than scraping the HTML."""
+    m = re.search(r"/projects/(\d+)", url)
+    if not m:
+        return {}
+    project_id = m.group(1)
+    try:
+        from backend.scrapers.reelly_scraper import _login
+        import httpx
+        token = _login()
+        resp = httpx.get(
+            f"https://api.reelly.io/api:sk5LT7jx/projects/{project_id}",
+            headers={"authToken": token},
+            timeout=15,
+        )
+        if resp.status_code != 200:
             return {}
+        d = resp.json()
+        # Extract cover image
+        img = None
+        if d.get("cover_image"):
+            img = d["cover_image"]
+        elif d.get("images") and len(d["images"]) > 0:
+            img = d["images"][0].get("url") or d["images"][0].get("image_url")
+
+        # Parse starting price
+        price = None
+        for k in ("starting_price", "min_price", "Starting_price", "price_from"):
+            if d.get(k):
+                try:
+                    price = float(str(d[k]).replace(",", "").replace("AED", "").strip())
+                    break
+                except Exception:
+                    pass
+
+        # Unit types → bedrooms summary
+        unit_types = d.get("unit_types_available") or d.get("Unit_types") or ""
+
+        return {
+            "title": d.get("Project_name") or d.get("project_name") or d.get("name") or "",
+            "image_url": img or "",
+            "price_aed": price,
+            "area": d.get("Area_name") or d.get("area") or d.get("community") or "",
+            "bedrooms": unit_types[:60] if unit_types else None,
+            "description": (d.get("Overview") or d.get("overview") or "")[:300],
+        }
+    except Exception:
+        return {}
+
+def _scrape_html_source(url: str) -> dict:
+    """Parse OG tags + JSON-LD from HTML for Bayut, PropertyFinder, etc."""
+    html = _fetch_html(url)
+    if not html:
+        return {}
 
     from bs4 import BeautifulSoup
     soup = BeautifulSoup(html, "lxml")
@@ -79,47 +162,63 @@ def _scrape_og(url: str) -> dict:
         tag = soup.find("meta", property=prop) or soup.find("meta", attrs={"name": prop})
         return tag["content"].strip() if tag and tag.get("content") else None
 
-    title = og("og:title") or og("twitter:title") or (soup.title.string.strip() if soup.title else None) or ""
+    title = og("og:title") or og("twitter:title") or (soup.title.string.strip() if soup.title else "") or ""
     image = og("og:image") or og("twitter:image") or ""
     description = og("og:description") or og("twitter:description") or ""
 
-    # Parse price from title/description
+    # Try JSON-LD for richer structured data (Bayut/PropertyFinder use this)
     price = None
-    price_match = re.search(r"AED\s*([\d,]+)", f"{title} {description}", re.IGNORECASE)
-    if price_match:
-        try:
-            price = float(price_match.group(1).replace(",", ""))
-        except ValueError:
-            pass
-
-    # Parse bedrooms
-    bedrooms = None
-    bed_match = re.search(r"(\d+)\s*(?:BR|Bed|Bedroom)", f"{title} {description}", re.IGNORECASE)
-    if bed_match:
-        bedrooms = bed_match.group(1)
-    elif re.search(r"\bstudio\b", f"{title} {description}", re.IGNORECASE):
-        bedrooms = "Studio"
-
-    # Parse sqft
+    area = None
     sqft = None
-    sqft_match = re.search(r"([\d,]+)\s*(?:sq\.?\s*ft|sqft)", f"{title} {description}", re.IGNORECASE)
-    if sqft_match:
+    bedrooms = None
+    for script in soup.find_all("script", type="application/ld+json"):
         try:
-            sqft = float(sqft_match.group(1).replace(",", ""))
-        except ValueError:
+            ld = json.loads(script.string or "{}")
+            if isinstance(ld, list):
+                ld = ld[0]
+            price = price or (float(str(ld.get("price", "")).replace(",", "")) if ld.get("price") else None)
+            if ld.get("address"):
+                area = area or ld["address"].get("addressLocality") or ld["address"].get("addressRegion")
+            if ld.get("floorSize"):
+                try:
+                    sqft = sqft or float(str(ld["floorSize"].get("value", "")).replace(",", ""))
+                except Exception:
+                    pass
+            if ld.get("numberOfRooms"):
+                bedrooms = bedrooms or str(ld["numberOfRooms"])
+            if not image and ld.get("image"):
+                img_val = ld["image"]
+                image = img_val[0] if isinstance(img_val, list) else img_val
+        except Exception:
             pass
 
-    # Clean title — remove trailing site name like " | Bayut"
-    clean_title = re.sub(r"\s*[|\-–]\s*(?:Bayut|Property Finder|PropertyFinder|Reelly).*$", "", title, flags=re.IGNORECASE).strip()
+    combined = f"{title} {description}"
+    price = price or _parse_price(combined)
+    bedrooms = bedrooms or _parse_beds(combined)
+    sqft = sqft or _parse_sqft(combined)
+
+    clean_title = re.sub(
+        r"\s*[|\-–]\s*(?:Bayut|Property Finder|PropertyFinder|Reelly|dubizzle).*$",
+        "", title, flags=re.IGNORECASE
+    ).strip()
 
     return {
         "title": clean_title or title,
         "image_url": image,
         "price_aed": price,
         "bedrooms": bedrooms,
+        "area": area or "",
         "size_sqft": sqft,
         "description": description[:300] if description else "",
     }
+
+def _scrape_og(url: str) -> dict:
+    """Route to best scraper based on URL domain."""
+    if "reelly.io" in url:
+        result = _scrape_reelly(url)
+        if result.get("title"):
+            return result
+    return _scrape_html_source(url)
 
 
 @router.post("/fetch-link")
