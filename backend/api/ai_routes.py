@@ -424,6 +424,47 @@ def intake_sessions(current_user=Depends(require_admin), db: Session = Depends(g
     ]
 
 
+class FormSubmitIn(BaseModel):
+    client_name: str
+    client_phone: Optional[str] = None
+    client_email: Optional[str] = None
+    purchase_purpose: Optional[str] = None
+    property_type: Optional[str] = None
+    bedrooms: Optional[str] = None
+    preferred_areas: Optional[str] = None
+    market_preference: Optional[str] = None
+    budget_aed: Optional[str] = None
+    payment_method: Optional[str] = None
+    timeline: Optional[str] = None
+    features: Optional[str] = None
+
+
+@router.post("/intake/form-submit")
+def intake_form_submit(
+    body: FormSubmitIn,
+    current_user=Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    session_id = str(uuid.uuid4())
+    session = ClientIntake(
+        session_id=session_id,
+        completed=True,
+        client_name=body.client_name,
+        client_phone=body.client_phone,
+        client_email=body.client_email,
+        purchase_purpose=body.purchase_purpose,
+        property_type=body.property_type,
+        bedrooms=body.bedrooms,
+        preferred_areas=body.preferred_areas,
+        market_preference=body.market_preference,
+        budget_aed=body.budget_aed,
+        messages_json="[]",
+    )
+    db.add(session)
+    db.commit()
+    return {"session_id": session_id, "message": "Intake saved"}
+
+
 class CompleteIn(BaseModel):
     client_name: str
     client_phone: Optional[str] = None
