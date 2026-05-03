@@ -371,6 +371,10 @@ class AgentPropertyPick(Base):
     property_type = Column(String(50), nullable=True)
     image_url = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
+    developer = Column(String(200), nullable=True)
+    completion_date = Column(String(100), nullable=True)
+    payment_plan = Column(Text, nullable=True)
+    highlights = Column(Text, nullable=True)
     sort_order = Column(Integer, default=0)
     created_at = Column(DateTime, default=datetime.utcnow)
 

@@ -80,9 +80,29 @@ def seed_admin():
         db.close()
 
 
+def _run_migrations():
+    from sqlalchemy import text
+    new_cols = [
+        ("developer",        "VARCHAR(200)"),
+        ("completion_date",  "VARCHAR(100)"),
+        ("payment_plan",     "TEXT"),
+        ("highlights",       "TEXT"),
+    ]
+    with engine.connect() as conn:
+        for col, coltype in new_cols:
+            try:
+                conn.execute(text(
+                    f"ALTER TABLE agent_property_picks ADD COLUMN IF NOT EXISTS {col} {coltype}"
+                ))
+            except Exception:
+                pass
+        conn.commit()
+
+
 @app.on_event("startup")
 async def startup():
     Base.metadata.create_all(bind=engine)
+    _run_migrations()
     seed_admin()
     start_scheduler()
 

@@ -336,7 +336,7 @@ def fetch_link(body: FetchLinkRequest, current_user=Depends(get_current_user), d
 # ─── Property picks ───────────────────────────────────────────────────────────
 
 class PickIn(BaseModel):
-    listing_url: str
+    listing_url: Optional[str] = ""
     title: Optional[str] = None
     price_aed: Optional[float] = None
     bedrooms: Optional[str] = None
@@ -346,6 +346,29 @@ class PickIn(BaseModel):
     property_type: Optional[str] = None
     image_url: Optional[str] = None
     notes: Optional[str] = None
+    developer: Optional[str] = None
+    completion_date: Optional[str] = None
+    payment_plan: Optional[str] = None
+    highlights: Optional[str] = None
+
+_PICK_FIELDS = (
+    "listing_url", "title", "price_aed", "bedrooms", "bathrooms",
+    "area", "size_sqft", "property_type", "image_url", "notes",
+    "developer", "completion_date", "payment_plan", "highlights",
+)
+
+def _pick_dict(p) -> dict:
+    return {
+        "id": p.id, "listing_url": p.listing_url or "", "title": p.title,
+        "price_aed": p.price_aed, "bedrooms": p.bedrooms, "bathrooms": p.bathrooms,
+        "area": p.area, "size_sqft": p.size_sqft, "property_type": p.property_type,
+        "image_url": p.image_url, "notes": p.notes, "sort_order": p.sort_order,
+        "developer": getattr(p, "developer", None),
+        "completion_date": getattr(p, "completion_date", None),
+        "payment_plan": getattr(p, "payment_plan", None),
+        "highlights": getattr(p, "highlights", None),
+        "added_by_name": p.agent.full_name if p.agent else None,
+    }
 
 
 @router.get("/sessions/{session_id}/picks")
@@ -353,16 +376,7 @@ def list_picks(session_id: str, current_user=Depends(get_current_user), db: Sess
     picks = db.query(AgentPropertyPick).filter(
         AgentPropertyPick.session_id == session_id
     ).order_by(AgentPropertyPick.sort_order, AgentPropertyPick.created_at).all()
-    return [
-        {
-            "id": p.id, "listing_url": p.listing_url, "title": p.title,
-            "price_aed": p.price_aed, "bedrooms": p.bedrooms, "bathrooms": p.bathrooms,
-            "area": p.area, "size_sqft": p.size_sqft, "property_type": p.property_type,
-            "image_url": p.image_url, "notes": p.notes, "sort_order": p.sort_order,
-            "added_by_name": p.agent.full_name if p.agent else None,
-        }
-        for p in picks
-    ]
+    return [_pick_dict(p) for p in picks]
 
 
 @router.post("/sessions/{session_id}/picks")
@@ -376,7 +390,7 @@ def add_pick(session_id: str, body: PickIn, current_user=Depends(get_current_use
     pick = AgentPropertyPick(
         session_id=session_id,
         added_by=current_user.id,
-        listing_url=body.listing_url,
+        listing_url=body.listing_url or "",
         title=body.title,
         price_aed=body.price_aed,
         bedrooms=body.bedrooms,
@@ -388,6 +402,10 @@ def add_pick(session_id: str, body: PickIn, current_user=Depends(get_current_use
         notes=body.notes,
         sort_order=max_order,
     )
+    for f in ("developer", "completion_date", "payment_plan", "highlights"):
+        v = getattr(body, f)
+        if v is not None:
+            setattr(pick, f, v)
     db.add(pick)
     db.commit()
     db.refresh(pick)
@@ -402,12 +420,41 @@ def update_pick(session_id: str, pick_id: int, body: PickIn, current_user=Depend
     ).first()
     if not pick:
         raise HTTPException(404, "Pick not found")
-    for field in ("listing_url", "title", "price_aed", "bedrooms", "bathrooms", "area", "size_sqft", "property_type", "image_url", "notes"):
+    for field in _PICK_FIELDS:
         val = getattr(body, field)
         if val is not None:
             setattr(pick, field, val)
     db.commit()
     return {"message": "Updated"}
+
+
+# ─── Image upload ─────────────────────────────────────────────────────────────
+
+@router.post("/upload-image")
+async def upload_image_file(
+    file: "UploadFile",
+    current_user=Depends(get_current_user),
+):
+    import os
+    from fastapi import UploadFile
+    import cloudinary, cloudinary.uploader
+    cloudinary.config(
+        cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
+        api_key=os.environ.get("CLOUDINARY_API_KEY"),
+        api_secret=os.environ.get("CLOUDINARY_API_SECRET"),
+    )
+    if not os.environ.get("CLOUDINARY_CLOUD_NAME"):
+        raise HTTPException(400, "Image upload not configured — paste an image URL directly instead")
+    try:
+        contents = await file.read()
+        result = cloudinary.uploader.upload(
+            contents,
+            folder="penta-picks",
+            resource_type="image",
+        )
+        return {"url": result["secure_url"]}
+    except Exception as e:
+        raise HTTPException(500, f"Upload failed: {e}")
 
 
 @router.delete("/sessions/{session_id}/picks/{pick_id}")

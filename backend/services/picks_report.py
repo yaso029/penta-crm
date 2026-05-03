@@ -170,73 +170,132 @@ def generate_picks_pdf(session, picks) -> bytes:
     story.append(Spacer(1, 4*mm))
 
     # ── Property cards ────────────────────────────────────────────────────────
-    IMG_W  = 68   # mm
-    IMG_H  = 52   # mm
-    TEXT_W = INNER - IMG_W*mm - 4*mm
+    IMG_W  = 72   # mm
+    IMG_H  = 58   # mm
+    TEXT_W = INNER - IMG_W*mm - 6*mm
 
     for i, pick in enumerate(picks):
-        price_str  = _fmt_price(pick.price_aed)
         title_str  = pick.title or f"Property {i+1}"
-        area_str   = pick.area or ""
-        specs_parts = []
-        if pick.bedrooms:  specs_parts.append(f"🛏  {pick.bedrooms} BR")
-        if pick.bathrooms: specs_parts.append(f"🚿  {pick.bathrooms} BA")
-        if pick.size_sqft: specs_parts.append(f"📐  {int(pick.size_sqft):,} sqft")
-        specs_str = "    ".join(specs_parts)
-        notes_str  = pick.notes or ""
+        price_str  = _fmt_price(pick.price_aed)
 
         # Fetch image
         img = _fetch_rl_image(pick.image_url, IMG_W, IMG_H) if pick.image_url else None
 
-        # Text block — no raw URL shown to client
+        # ── Number badge row ──
+        badge_row = Table(
+            [[_p(f'<font color="white" size="8"><b>  #{i+1}  </b></font>', normal)]],
+            colWidths=[INNER],
+        )
+        badge_row.setStyle(TableStyle([
+            ("BACKGROUND",    (0,0),(-1,-1), NAVY),
+            ("TOPPADDING",    (0,0),(-1,-1), 4),
+            ("BOTTOMPADDING", (0,0),(-1,-1), 4),
+            ("LEFTPADDING",   (0,0),(-1,-1), 8),
+        ]))
+
+        # ── Text block ──────────────────────────────────────
         txt = []
+
+        # Title
         txt.append(_p(
-            f'<font color="#0A2342" size="12"><b>{title_str}</b></font>',
-            style(spaceAfter=3),
+            f'<font color="#0A2342" size="13"><b>{title_str}</b></font>',
+            style(spaceAfter=2),
         ))
-        if price_str:
+
+        # Developer
+        dev = getattr(pick, "developer", None) or ""
+        if dev:
             txt.append(_p(
-                f'<font color="#C9A84C" size="15"><b>{price_str}</b></font>',
-                style(spaceAfter=4),
-            ))
-        if specs_str:
-            txt.append(_p(
-                f'<font color="#1E293B" size="9">{specs_str}</font>',
-                style(spaceAfter=3),
-            ))
-        if area_str:
-            txt.append(_p(
-                f'<font color="#64748B" size="9">📍  {area_str}</font>',
-                style(spaceAfter=3),
-            ))
-        if notes_str:
-            txt.append(_p(
-                f'<font color="#64748B" size="8"><i>{notes_str}</i></font>',
+                f'<font color="#64748B" size="8">{dev}</font>',
                 style(spaceAfter=4),
             ))
 
+        # Price
+        if price_str:
+            txt.append(_p(
+                f'<font color="#C9A84C" size="16"><b>{price_str}</b></font>',
+                style(spaceAfter=5),
+            ))
+
+        # Specs row
+        specs = []
+        if pick.bedrooms:  specs.append(f"🛏 {pick.bedrooms} BR")
+        if pick.bathrooms: specs.append(f"🚿 {pick.bathrooms} BA")
+        if pick.size_sqft: specs.append(f"📐 {int(pick.size_sqft):,} sqft")
+        if pick.property_type: specs.append(f"🏢 {pick.property_type}")
+        if specs:
+            txt.append(_p(
+                f'<font color="#1E293B" size="9">{"    ".join(specs)}</font>',
+                style(spaceAfter=4),
+            ))
+
+        # Info rows table (area / handover / payment plan)
+        info_rows = []
+        if pick.area:
+            info_rows.append(("📍 Location", pick.area))
+        completion = getattr(pick, "completion_date", None) or ""
+        if completion:
+            info_rows.append(("🗓 Handover", completion))
+        payment = getattr(pick, "payment_plan", None) or ""
+        if payment:
+            info_rows.append(("💳 Payment Plan", payment))
+
+        if info_rows:
+            for label, val in info_rows:
+                txt.append(Table(
+                    [[
+                        _p(f'<font color="#94A3B8" size="8">{label}</font>', normal),
+                        _p(f'<font color="#1E293B" size="8"><b>{val}</b></font>', normal),
+                    ]],
+                    colWidths=[32*mm, TEXT_W - 34*mm if img else INNER - 34*mm],
+                ))
+            txt.append(Spacer(1, 4))
+
+        # Highlights
+        highlights = getattr(pick, "highlights", None) or ""
+        if highlights:
+            txt.append(_p(
+                f'<font color="#0A2342" size="8">⭐  {highlights}</font>',
+                style(spaceAfter=3),
+            ))
+
+        # Agent notes
+        if pick.notes:
+            txt.append(_p(
+                f'<font color="#64748B" size="8"><i>📝  {pick.notes}</i></font>',
+                style(spaceAfter=0),
+            ))
+
+        # ── Assemble card ─────────────────────────────────
         if img:
-            # Two-column: image left, text right
             card_data = [[img, txt]]
             col_w = [IMG_W*mm, TEXT_W]
         else:
-            # Full-width text
             card_data = [[txt]]
             col_w = [INNER]
 
-        card = Table(card_data, colWidths=col_w)
-        card.setStyle(TableStyle([
+        card_body = Table(card_data, colWidths=col_w)
+        card_body.setStyle(TableStyle([
             ("BACKGROUND",    (0,0),(-1,-1), WHITE),
             ("VALIGN",        (0,0),(-1,-1), "TOP"),
             ("LEFTPADDING",   (0,0),(-1,-1), 8),
-            ("RIGHTPADDING",  (0,0),(-1,-1), 8),
+            ("RIGHTPADDING",  (0,0),(-1,-1), 10),
             ("TOPPADDING",    (0,0),(-1,-1), 10),
-            ("BOTTOMPADDING", (0,0),(-1,-1), 10),
-            ("BOX",           (0,0),(-1,-1), 0.5, colors.HexColor("#E2E8F0")),
-            ("LINEBELOW",     (0,0),(0,0 if img else -1), 3, GOLD),
+            ("BOTTOMPADDING", (0,0),(-1,-1), 12),
         ]))
 
-        story.append(KeepTogether([card, Spacer(1, 5*mm)]))
+        # Outer wrapper with border
+        outer = Table([[badge_row], [card_body]], colWidths=[INNER])
+        outer.setStyle(TableStyle([
+            ("BOX",           (0,0),(-1,-1), 0.5, colors.HexColor("#E2E8F0")),
+            ("LINEBELOW",     (0,0),(-1,0),  2,   GOLD),
+            ("LEFTPADDING",   (0,0),(-1,-1), 0),
+            ("RIGHTPADDING",  (0,0),(-1,-1), 0),
+            ("TOPPADDING",    (0,0),(-1,-1), 0),
+            ("BOTTOMPADDING", (0,0),(-1,-1), 0),
+        ]))
+
+        story.append(KeepTogether([outer, Spacer(1, 6*mm)]))
 
     # ── Footer ────────────────────────────────────────────────────────────────
     story.append(Spacer(1, 6*mm))
