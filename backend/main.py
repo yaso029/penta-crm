@@ -87,6 +87,7 @@ def _run_migrations():
         ("completion_date",  "VARCHAR(100)"),
         ("payment_plan",     "TEXT"),
         ("highlights",       "TEXT"),
+        ("images_json",      "TEXT"),
     ]
     with engine.connect() as conn:
         for col, coltype in new_cols:

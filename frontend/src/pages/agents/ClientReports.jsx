@@ -167,17 +167,17 @@ function FetchBar({ onFetched, onAddManually }) {
 
 const EMPTY_FORM = {
   title: '', price_aed: '', bedrooms: '', bathrooms: '', area: '',
-  size_sqft: '', property_type: '', image_url: '', notes: '',
-  developer: '', completion_date: '', payment_plan: '', highlights: '',
-  listing_url: '',
+  size_sqft: '', property_type: '', image_url: '', images_extra: [],
+  notes: '', developer: '', completion_date: '', payment_plan: '',
+  highlights: '', listing_url: '',
 };
 
 function PickCard({ pick, index, onSave, onDelete, onRefetch }) {
   const [editing, setEditing] = useState(!pick.title);
   const [refetching, setRefetching] = useState(false);
   const [refetchStatus, setRefetchStatus] = useState(null);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef(null);
+  const [uploadingIdx, setUploadingIdx] = useState(null);
+  const fileInputRefs = useRef([]);
 
   const [form, setForm] = useState({
     title: pick.title || '',
@@ -188,6 +188,7 @@ function PickCard({ pick, index, onSave, onDelete, onRefetch }) {
     size_sqft: pick.size_sqft || '',
     property_type: pick.property_type || '',
     image_url: pick.image_url || '',
+    images_extra: Array.isArray(pick.images_extra) ? pick.images_extra : [],
     notes: pick.notes || '',
     developer: pick.developer || '',
     completion_date: pick.completion_date || '',
@@ -198,23 +199,42 @@ function PickCard({ pick, index, onSave, onDelete, onRefetch }) {
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
 
-  const handleImageUpload = async (e) => {
+  const setImageUrl = (idx, url) => {
+    if (idx === 0) {
+      set('image_url', url);
+    } else {
+      setForm(p => {
+        const arr = [...(p.images_extra || [])];
+        arr[idx - 1] = url;
+        return { ...p, images_extra: arr };
+      });
+    }
+  };
+
+  const getImageUrl = (idx) => {
+    if (idx === 0) return form.image_url;
+    return form.images_extra?.[idx - 1] || '';
+  };
+
+  const handleImageUpload = async (e, slotIdx) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    setUploading(true);
+    setUploadingIdx(slotIdx);
+    // Reset input so same file can be re-selected
+    e.target.value = '';
     try {
       const fd = new FormData();
       fd.append('file', file);
       const r = await api.post('/api/client-reports/upload-image', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      if (r.data.url) set('image_url', r.data.url);
+      if (r.data.url) setImageUrl(slotIdx, r.data.url);
       else alert(r.data.error || 'Upload failed');
     } catch (err) {
       const msg = err.response?.data?.detail || 'Upload failed — paste an image URL instead';
       alert(msg);
     } finally {
-      setUploading(false);
+      setUploadingIdx(null);
     }
   };
 
@@ -241,6 +261,7 @@ function PickCard({ pick, index, onSave, onDelete, onRefetch }) {
         size_sqft: fresh.size_sqft ?? form.size_sqft,
         property_type: fresh.property_type || form.property_type,
         image_url: fresh.image_url || form.image_url,
+        images_extra: form.images_extra,
         notes: form.notes,
         developer: form.developer,
         completion_date: form.completion_date,
@@ -264,6 +285,7 @@ function PickCard({ pick, index, onSave, onDelete, onRefetch }) {
       ...form,
       price_aed: form.price_aed ? parseFloat(String(form.price_aed).replace(/,/g, '')) : null,
       size_sqft: form.size_sqft ? parseFloat(form.size_sqft) : null,
+      images_extra: (form.images_extra || []).filter(Boolean),
     });
     setEditing(false);
   };
@@ -312,11 +334,22 @@ function PickCard({ pick, index, onSave, onDelete, onRefetch }) {
 
       {/* Card preview */}
       <div style={{ display: 'flex', gap: 12, padding: '12px 14px', alignItems: 'flex-start' }}>
-        {/* Thumbnail */}
-        <div style={{ width: 100, height: 75, flexShrink: 0, borderRadius: 8, overflow: 'hidden', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {form.image_url
-            ? <img src={form.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none'; }} />
-            : <span style={{ fontSize: 28 }}>🏠</span>}
+        {/* Thumbnail + extra images */}
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, flexShrink: 0 }}>
+          <div style={{ width: 100, height: 72, borderRadius: 8, overflow: 'hidden', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {form.image_url
+              ? <img src={form.image_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none'; }} />
+              : <span style={{ fontSize: 28 }}>🏠</span>}
+          </div>
+          {(form.images_extra || []).filter(Boolean).length > 0 && (
+            <div style={{ display: 'flex', gap: 3 }}>
+              {(form.images_extra || []).filter(Boolean).slice(0, 4).map((url, ei) => (
+                <div key={ei} style={{ width: 22, height: 16, borderRadius: 3, overflow: 'hidden', background: '#f1f5f9' }}>
+                  <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none'; }} />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Info */}
@@ -400,40 +433,58 @@ function PickCard({ pick, index, onSave, onDelete, onRefetch }) {
               <input value={form.listing_url} onChange={e => set('listing_url', e.target.value)} placeholder="https://…" style={inputS} />
             </div>
 
-            {/* Image section */}
+            {/* Image gallery — up to 5 slots */}
             <div style={{ gridColumn: '1/-1' }}>
-              <label style={labelS}>Property Image</label>
-              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-                <input
-                  value={form.image_url}
-                  onChange={e => set('image_url', e.target.value)}
-                  placeholder="Paste image URL, or upload below…"
-                  style={{ ...inputS, flex: 1 }}
-                />
-                <button
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={uploading}
-                  style={{
-                    padding: '7px 14px', borderRadius: 6, border: `1px solid ${GOLD}`,
-                    background: '#fffbeb', color: NAVY, fontSize: 12, fontWeight: 700,
-                    cursor: uploading ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
-                  }}
-                >
-                  {uploading ? '⏳ Uploading…' : '📷 Upload photo'}
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  style={{ display: 'none' }}
-                  onChange={handleImageUpload}
-                />
+              <label style={labelS}>Property Images — up to 5 (first = main photo in report)</label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
+                {[0, 1, 2, 3, 4].map(idx => {
+                  const imgUrl = getImageUrl(idx);
+                  const isUploading = uploadingIdx === idx;
+                  return (
+                    <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                      {/* Thumbnail preview */}
+                      <div style={{ width: 52, height: 40, flexShrink: 0, borderRadius: 6, overflow: 'hidden', background: '#f1f5f9', display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #e2e8f0' }}>
+                        {imgUrl
+                          ? <img src={imgUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { e.target.style.display = 'none'; }} />
+                          : <span style={{ fontSize: 16, opacity: 0.4 }}>🏠</span>
+                        }
+                      </div>
+                      {/* URL input */}
+                      <input
+                        value={imgUrl}
+                        onChange={e => setImageUrl(idx, e.target.value)}
+                        placeholder={idx === 0 ? 'Main image URL…' : `Image ${idx + 1} URL (optional)…`}
+                        style={{ ...inputS, flex: 1 }}
+                      />
+                      {/* Upload button */}
+                      <button
+                        onClick={() => fileInputRefs.current[idx]?.click()}
+                        disabled={isUploading}
+                        title="Upload photo"
+                        style={{ padding: '7px 10px', borderRadius: 6, border: `1px solid ${GOLD}`, background: '#fffbeb', color: NAVY, fontSize: 13, fontWeight: 700, cursor: isUploading ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                      >
+                        {isUploading ? '⏳' : '📷'}
+                      </button>
+                      {/* Clear button */}
+                      {imgUrl && (
+                        <button
+                          onClick={() => setImageUrl(idx, '')}
+                          title="Remove"
+                          style={{ padding: '7px 8px', borderRadius: 6, border: '1px solid #fee2e2', background: '#fff5f5', color: '#dc2626', fontSize: 12, cursor: 'pointer', flexShrink: 0 }}
+                        >✕</button>
+                      )}
+                      {/* Hidden file input */}
+                      <input
+                        ref={el => fileInputRefs.current[idx] = el}
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={e => handleImageUpload(e, idx)}
+                      />
+                    </div>
+                  );
+                })}
               </div>
-              {form.image_url && (
-                <img src={form.image_url} alt="preview"
-                  style={{ marginTop: 8, height: 80, borderRadius: 6, objectFit: 'cover', border: '1px solid #e2e8f0' }}
-                  onError={e => { e.target.style.display = 'none'; }} />
-              )}
             </div>
           </div>
 

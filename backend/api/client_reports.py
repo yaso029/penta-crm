@@ -345,6 +345,7 @@ class PickIn(BaseModel):
     size_sqft: Optional[float] = None
     property_type: Optional[str] = None
     image_url: Optional[str] = None
+    images_extra: Optional[list] = None   # images 2-5
     notes: Optional[str] = None
     developer: Optional[str] = None
     completion_date: Optional[str] = None
@@ -358,11 +359,14 @@ _PICK_FIELDS = (
 )
 
 def _pick_dict(p) -> dict:
+    import json as _json
+    extra = _json.loads(getattr(p, "images_json", None) or "[]")
     return {
         "id": p.id, "listing_url": p.listing_url or "", "title": p.title,
         "price_aed": p.price_aed, "bedrooms": p.bedrooms, "bathrooms": p.bathrooms,
         "area": p.area, "size_sqft": p.size_sqft, "property_type": p.property_type,
-        "image_url": p.image_url, "notes": p.notes, "sort_order": p.sort_order,
+        "image_url": p.image_url, "images_extra": extra,
+        "notes": p.notes, "sort_order": p.sort_order,
         "developer": getattr(p, "developer", None),
         "completion_date": getattr(p, "completion_date", None),
         "payment_plan": getattr(p, "payment_plan", None),
@@ -406,6 +410,8 @@ def add_pick(session_id: str, body: PickIn, current_user=Depends(get_current_use
         v = getattr(body, f)
         if v is not None:
             setattr(pick, f, v)
+    if body.images_extra is not None:
+        pick.images_json = json.dumps([u for u in body.images_extra if u][:4])
     db.add(pick)
     db.commit()
     db.refresh(pick)
@@ -424,6 +430,8 @@ def update_pick(session_id: str, pick_id: int, body: PickIn, current_user=Depend
         val = getattr(body, field)
         if val is not None:
             setattr(pick, field, val)
+    if body.images_extra is not None:
+        pick.images_json = json.dumps([u for u in body.images_extra if u][:4])
     db.commit()
     return {"message": "Updated"}
 

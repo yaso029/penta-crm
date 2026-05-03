@@ -2,6 +2,7 @@
 Branded PDF brochure: client brief + agent-curated property cards with images.
 """
 import io
+import json as _json
 import re
 from datetime import datetime
 
@@ -170,18 +171,39 @@ def generate_picks_pdf(session, picks) -> bytes:
     story.append(Spacer(1, 4*mm))
 
     # ── Property cards ────────────────────────────────────────────────────────
-    IMG_W  = 72   # mm
-    IMG_H  = 58   # mm
-    TEXT_W = INNER - IMG_W*mm - 6*mm
+    IMG_W_MM    = 72     # mm — main image column width
+    THUMB_H_MM  = 28     # mm — thumbnail strip height
+    TEXT_PAD_L  = 16     # pt — left padding on text column (gap from image)
+    TEXT_PAD_R  = 10     # pt — right padding on text column
+    TEXT_PAD_NL = 14     # pt — left padding when no image
+    TEXT_PAD_NR = 14     # pt — right padding when no image
+
+    IMG_W_PTS   = IMG_W_MM * mm
+    TEXT_W      = INNER - IMG_W_PTS
+    TEXT_INNER  = TEXT_W - TEXT_PAD_L - TEXT_PAD_R   # available content inside text col
 
     for i, pick in enumerate(picks):
-        title_str  = pick.title or f"Property {i+1}"
-        price_str  = _fmt_price(pick.price_aed)
+        title_str = pick.title or f"Property {i+1}"
+        price_str = _fmt_price(pick.price_aed)
 
-        # Fetch image
-        img = _fetch_rl_image(pick.image_url, IMG_W, IMG_H) if pick.image_url else None
+        # ── Collect all image URLs (main + up to 4 extras) ────────────────
+        all_img_urls = []
+        if pick.image_url:
+            all_img_urls.append(pick.image_url)
+        try:
+            extras = _json.loads(getattr(pick, "images_json", None) or "[]")
+            all_img_urls.extend([u for u in (extras or []) if u])
+        except Exception:
+            pass
+        all_img_urls = all_img_urls[:5]
+        n_imgs      = len(all_img_urls)
+        has_extras  = n_imgs > 1
 
-        # ── Number badge row ──
+        # Main image — shorter when a thumbnail strip will follow
+        main_h_mm = 40 if has_extras else 52
+        main_img  = _fetch_rl_image(all_img_urls[0], IMG_W_MM, main_h_mm) if n_imgs > 0 else None
+
+        # ── Number badge row ──────────────────────────────────────────────
         badge_row = Table(
             [[_p(f'<font color="white" size="8"><b>  #{i+1}  </b></font>', normal)]],
             colWidths=[INNER],
@@ -193,16 +215,14 @@ def generate_picks_pdf(session, picks) -> bytes:
             ("LEFTPADDING",   (0,0),(-1,-1), 8),
         ]))
 
-        # ── Text block ──────────────────────────────────────
+        # ── Text block ────────────────────────────────────────────────────
         txt = []
 
-        # Title
         txt.append(_p(
             f'<font color="#0A2342" size="13"><b>{title_str}</b></font>',
             style(spaceAfter=2),
         ))
 
-        # Developer
         dev = getattr(pick, "developer", None) or ""
         if dev:
             txt.append(_p(
@@ -210,18 +230,16 @@ def generate_picks_pdf(session, picks) -> bytes:
                 style(spaceAfter=4),
             ))
 
-        # Price
         if price_str:
             txt.append(_p(
                 f'<font color="#C9A84C" size="16"><b>{price_str}</b></font>',
                 style(spaceAfter=5),
             ))
 
-        # Specs row
         specs = []
-        if pick.bedrooms:  specs.append(f"🛏 {pick.bedrooms} BR")
-        if pick.bathrooms: specs.append(f"🚿 {pick.bathrooms} BA")
-        if pick.size_sqft: specs.append(f"📐 {int(pick.size_sqft):,} sqft")
+        if pick.bedrooms:    specs.append(f"🛏 {pick.bedrooms} BR")
+        if pick.bathrooms:   specs.append(f"🚿 {pick.bathrooms} BA")
+        if pick.size_sqft:   specs.append(f"📐 {int(pick.size_sqft):,} sqft")
         if pick.property_type: specs.append(f"🏢 {pick.property_type}")
         if specs:
             txt.append(_p(
@@ -229,7 +247,7 @@ def generate_picks_pdf(session, picks) -> bytes:
                 style(spaceAfter=4),
             ))
 
-        # Info rows table (area / handover / payment plan)
+        # Info rows (Location / Handover / Payment Plan)
         info_rows = []
         if pick.area:
             info_rows.append(("📍 Location", pick.area))
@@ -241,17 +259,22 @@ def generate_picks_pdf(session, picks) -> bytes:
             info_rows.append(("💳 Payment Plan", payment))
 
         if info_rows:
+            info_label_w = 32 * mm
+            if main_img:
+                info_val_w = TEXT_INNER - info_label_w - 4
+            else:
+                info_val_w = INNER - TEXT_PAD_NL - TEXT_PAD_NR - info_label_w - 4
+            info_val_w = max(info_val_w, 50)
             for label, val in info_rows:
                 txt.append(Table(
                     [[
                         _p(f'<font color="#94A3B8" size="8">{label}</font>', normal),
                         _p(f'<font color="#1E293B" size="8"><b>{val}</b></font>', normal),
                     ]],
-                    colWidths=[32*mm, TEXT_W - 34*mm if img else INNER - 34*mm],
+                    colWidths=[info_label_w, info_val_w],
                 ))
             txt.append(Spacer(1, 4))
 
-        # Highlights
         highlights = getattr(pick, "highlights", None) or ""
         if highlights:
             txt.append(_p(
@@ -259,33 +282,85 @@ def generate_picks_pdf(session, picks) -> bytes:
                 style(spaceAfter=3),
             ))
 
-        # Agent notes
         if pick.notes:
             txt.append(_p(
                 f'<font color="#64748B" size="8"><i>📝  {pick.notes}</i></font>',
                 style(spaceAfter=0),
             ))
 
-        # ── Assemble card ─────────────────────────────────
-        if img:
-            card_data = [[img, txt]]
-            col_w = [IMG_W*mm, TEXT_W]
+        # ── Assemble card body ────────────────────────────────────────────
+        if main_img:
+            card_data = [[main_img, txt]]
+            col_w     = [IMG_W_PTS, TEXT_W]
+            body_style = TableStyle([
+                ("BACKGROUND",    (0,0),(-1,-1), WHITE),
+                ("VALIGN",        (0,0),(-1,-1), "TOP"),
+                ("LEFTPADDING",   (0,0),(0,-1),  6),
+                ("RIGHTPADDING",  (0,0),(0,-1),  0),
+                ("LEFTPADDING",   (1,0),(1,-1),  TEXT_PAD_L),
+                ("RIGHTPADDING",  (1,0),(1,-1),  TEXT_PAD_R),
+                ("TOPPADDING",    (0,0),(-1,-1), 10),
+                ("BOTTOMPADDING", (0,0),(-1,-1), 12),
+            ])
         else:
             card_data = [[txt]]
-            col_w = [INNER]
+            col_w     = [INNER]
+            body_style = TableStyle([
+                ("BACKGROUND",    (0,0),(-1,-1), WHITE),
+                ("VALIGN",        (0,0),(-1,-1), "TOP"),
+                ("LEFTPADDING",   (0,0),(-1,-1), TEXT_PAD_NL),
+                ("RIGHTPADDING",  (0,0),(-1,-1), TEXT_PAD_NR),
+                ("TOPPADDING",    (0,0),(-1,-1), 10),
+                ("BOTTOMPADDING", (0,0),(-1,-1), 12),
+            ])
 
         card_body = Table(card_data, colWidths=col_w)
-        card_body.setStyle(TableStyle([
-            ("BACKGROUND",    (0,0),(-1,-1), WHITE),
-            ("VALIGN",        (0,0),(-1,-1), "TOP"),
-            ("LEFTPADDING",   (0,0),(-1,-1), 8),
-            ("RIGHTPADDING",  (0,0),(-1,-1), 10),
-            ("TOPPADDING",    (0,0),(-1,-1), 10),
-            ("BOTTOMPADDING", (0,0),(-1,-1), 12),
-        ]))
+        card_body.setStyle(body_style)
 
-        # Outer wrapper with border
-        outer = Table([[badge_row], [card_body]], colWidths=[INNER])
+        # ── Thumbnail strip (when 2+ images) ─────────────────────────────
+        thumb_strip = None
+        if has_extras:
+            n_thumbs   = min(n_imgs - 1, 4)
+            thumb_urls = all_img_urls[1:1+n_thumbs]
+            thumb_w_pts = INNER / n_thumbs
+            thumb_w_mm  = thumb_w_pts / mm
+
+            thumb_cells = []
+            for turl in thumb_urls:
+                timg = _fetch_rl_image(turl, thumb_w_mm - 1.5, THUMB_H_MM - 2)
+                if timg:
+                    tc = Table([[timg]], colWidths=[thumb_w_pts])
+                    tc.setStyle(TableStyle([
+                        ("BACKGROUND",    (0,0),(-1,-1), WHITE),
+                        ("ALIGN",         (0,0),(-1,-1), "CENTER"),
+                        ("LEFTPADDING",   (0,0),(-1,-1), 2),
+                        ("RIGHTPADDING",  (0,0),(-1,-1), 2),
+                        ("TOPPADDING",    (0,0),(-1,-1), 3),
+                        ("BOTTOMPADDING", (0,0),(-1,-1), 3),
+                    ]))
+                    thumb_cells.append(tc)
+                else:
+                    thumb_cells.append(
+                        _p('<font color="#94A3B8" size="8">—</font>',
+                           style(alignment=TA_CENTER))
+                    )
+
+            thumb_strip = Table([thumb_cells], colWidths=[thumb_w_pts]*n_thumbs)
+            thumb_strip.setStyle(TableStyle([
+                ("BACKGROUND",    (0,0),(-1,-1), LGRAY),
+                ("TOPPADDING",    (0,0),(-1,-1), 0),
+                ("BOTTOMPADDING", (0,0),(-1,-1), 0),
+                ("LEFTPADDING",   (0,0),(-1,-1), 0),
+                ("RIGHTPADDING",  (0,0),(-1,-1), 0),
+                ("LINEABOVE",     (0,0),(-1,0),  0.5, colors.HexColor("#E2E8F0")),
+            ]))
+
+        # ── Outer wrapper with border ─────────────────────────────────────
+        outer_rows = [[badge_row], [card_body]]
+        if thumb_strip:
+            outer_rows.append([thumb_strip])
+
+        outer = Table(outer_rows, colWidths=[INNER])
         outer.setStyle(TableStyle([
             ("BOX",           (0,0),(-1,-1), 0.5, colors.HexColor("#E2E8F0")),
             ("LINEBELOW",     (0,0),(-1,0),  2,   GOLD),

@@ -370,6 +370,7 @@ class AgentPropertyPick(Base):
     size_sqft = Column(Float, nullable=True)
     property_type = Column(String(50), nullable=True)
     image_url = Column(Text, nullable=True)
+    images_json = Column(Text, nullable=True)  # JSON array of extra image URLs (images 2-5)
     notes = Column(Text, nullable=True)
     developer = Column(String(200), nullable=True)
     completion_date = Column(String(100), nullable=True)
