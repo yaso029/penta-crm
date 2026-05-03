@@ -157,8 +157,9 @@ function FetchBar({ onFetched }) {
 
 // ─── Editable pick card ────────────────────────────────────────────────────
 
-function PickCard({ pick, index, onSave, onDelete }) {
+function PickCard({ pick, index, onSave, onDelete, onRefetch }) {
   const [editing, setEditing] = useState(!pick.title); // open if just fetched with no title
+  const [refetching, setRefetching] = useState(false);
   const [form, setForm] = useState({
     title: pick.title || '',
     price_aed: pick.price_aed || '',
@@ -173,6 +174,32 @@ function PickCard({ pick, index, onSave, onDelete }) {
   });
 
   const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const handleRefetch = async () => {
+    setRefetching(true);
+    try {
+      const r = await api.post('/api/client-reports/fetch-link', { url: pick.listing_url });
+      const fresh = r.data;
+      const merged = {
+        listing_url: pick.listing_url,
+        title: fresh.title || form.title,
+        price_aed: fresh.price_aed ?? form.price_aed,
+        bedrooms: fresh.bedrooms || form.bedrooms,
+        bathrooms: fresh.bathrooms || form.bathrooms,
+        area: fresh.area || form.area,
+        size_sqft: fresh.size_sqft ?? form.size_sqft,
+        property_type: fresh.property_type || form.property_type,
+        image_url: fresh.image_url || form.image_url,
+        notes: form.notes,
+      };
+      setForm(merged);
+      await onRefetch(pick.id, merged);
+    } catch {
+      // silently fail — form still has old values
+    } finally {
+      setRefetching(false);
+    }
+  };
 
   const handleSave = () => {
     onSave(pick.id, {
@@ -233,6 +260,14 @@ function PickCard({ pick, index, onSave, onDelete }) {
 
         {/* Actions */}
         <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+          <button
+            onClick={handleRefetch}
+            disabled={refetching}
+            title="Re-scrape data from listing URL"
+            style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: '#f8fafc', color: '#555', fontSize: 12, cursor: refetching ? 'not-allowed' : 'pointer' }}
+          >
+            {refetching ? '⏳' : '🔄'}
+          </button>
           <button onClick={() => setEditing(p => !p)} style={{ padding: '5px 10px', borderRadius: 6, border: '1px solid #e2e8f0', background: editing ? '#eff6ff' : '#f8fafc', color: editing ? '#2563eb' : '#555', fontSize: 12, cursor: 'pointer' }}>
             {editing ? 'Cancel' : '✏️ Edit'}
           </button>
@@ -339,6 +374,19 @@ export default function ClientReports() {
     }
   };
 
+  const handleRefetch = async (pickId, updates) => {
+    try {
+      await api.put(`/api/client-reports/sessions/${selected.session_id}/picks/${pickId}`, {
+        ...updates,
+        price_aed: updates.price_aed ? parseFloat(String(updates.price_aed).replace(/,/g, '')) : null,
+        size_sqft: updates.size_sqft ? parseFloat(updates.size_sqft) : null,
+      });
+      fetchPicks(selected.session_id);
+    } catch {
+      // ignore
+    }
+  };
+
   const handleDelete = async (pickId) => {
     if (!confirm('Remove this property?')) return;
     await api.delete(`/api/client-reports/sessions/${selected.session_id}/picks/${pickId}`);
@@ -442,7 +490,7 @@ export default function ClientReports() {
                 <div style={{ fontSize: 12, marginTop: 4 }}>Works with Bayut, PropertyFinder, Reelly and more</div>
               </div>
             ) : picks.map((p, i) => (
-              <PickCard key={p.id} pick={p} index={i} onSave={handleSave} onDelete={handleDelete} />
+              <PickCard key={p.id} pick={p} index={i} onSave={handleSave} onDelete={handleDelete} onRefetch={handleRefetch} />
             ))}
           </div>
         </div>
