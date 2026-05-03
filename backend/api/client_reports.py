@@ -6,7 +6,7 @@ import json
 import re
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File
 from fastapi.responses import Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -432,11 +432,10 @@ def update_pick(session_id: str, pick_id: int, body: PickIn, current_user=Depend
 
 @router.post("/upload-image")
 async def upload_image_file(
-    file: "UploadFile",
+    file: UploadFile = File(...),
     current_user=Depends(get_current_user),
 ):
     import os
-    from fastapi import UploadFile
     import cloudinary, cloudinary.uploader
     cloudinary.config(
         cloud_name=os.environ.get("CLOUDINARY_CLOUD_NAME"),
