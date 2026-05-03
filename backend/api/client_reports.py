@@ -118,118 +118,94 @@ def _reelly_login() -> str | None:
         return None
 
 
-def _scrape_reelly(url: str) -> dict:
+def _scrape_reelly(url: str, db=None) -> dict:
     """
-    Scrape a find.reelly.io project page.
-    The Reelly API has no single-project GET endpoint — project data is
-    embedded as __NEXT_DATA__ JSON in the HTML page. We fetch the page
-    with an auth cookie so the server includes full project data.
+    Get Reelly project data.
+    1. Check local OffPlanListing DB (populated by the full scraper).
+    2. Scan API search pages to find the project by its numeric ID.
+    The Reelly API has no single-project endpoint (/projects/{id} → 404).
+    Fields confirmed from API: Project_name, Area_name, min_price,
+    Starting_price (list), cover (dict with .url).
     """
     import logging, httpx
-    from bs4 import BeautifulSoup
     log = logging.getLogger(__name__)
 
     m = re.search(r"/projects/(\d+)", url)
     if not m:
         return {}
-    project_id = m.group(1)
+    project_id = int(m.group(1))
+
+    # ── 1. Local DB lookup ────────────────────────────────────────────────
+    if db is not None:
+        try:
+            from backend.database.models import OffPlanListing
+            canonical = f"https://find.reelly.io/projects/{project_id}"
+            local = db.query(OffPlanListing).filter(
+                OffPlanListing.listing_url == canonical
+            ).first()
+            if local and local.project_name:
+                log.info("Reelly: found in local DB — %r", local.project_name)
+                return {
+                    "title": local.project_name or "",
+                    "image_url": local.cover_image_url or "",
+                    "price_aed": local.starting_price_aed,
+                    "area": local.area or local.community or "",
+                    "bedrooms": None,
+                }
+        except Exception as e:
+            log.warning("Reelly DB lookup failed: %s", e)
+
+    # ── 2. API search scan ────────────────────────────────────────────────
+    token = _reelly_login()
+    if not token:
+        log.error("Reelly login failed")
+        return {}
 
     try:
-        token = _reelly_login()
-        if not token:
-            log.error("Reelly login failed — check REELLY_EMAIL / REELLY_PASSWORD on Railway")
-            return {}
+        headers = {"authToken": token}
+        for page in range(1, 20):          # scan up to 20 pages (~400 projects)
+            r = httpx.get(
+                "https://api.reelly.io/api:sk5LT7jx/projectsExternalSearch",
+                params={"search_field": "", "page": page},
+                headers=headers, timeout=20,
+            )
+            if r.status_code != 200:
+                break
+            data   = r.json()
+            result = data.get("result_1", data)
+            items  = result.get("items", []) if isinstance(result, dict) else []
+            if not items:
+                break
 
-        # Fetch the project's HTML page with auth token as a header/cookie
-        headers = {
-            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
-                          "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-            "authToken": token,
-            "Cookie": f"authToken={token}",
-        }
-        project_url = f"https://find.reelly.io/projects/{project_id}"
-        resp = httpx.get(project_url, headers=headers, timeout=20, follow_redirects=True)
-        if resp.status_code != 200:
-            log.error("Reelly HTML page returned %s for %s", resp.status_code, project_url)
-            return {}
+            for item in items:
+                if item.get("id") == project_id:
+                    cover = item.get("cover") or {}
+                    img   = cover.get("url") if isinstance(cover, dict) else None
+                    price = item.get("min_price") or None
+                    if not price and item.get("Starting_price"):
+                        for sp in (item["Starting_price"] or []):
+                            p = sp.get("Price_from_AED")
+                            if p and float(p) > 0:
+                                price = float(p)
+                                break
+                    title = item.get("Project_name") or ""
+                    log.info("Reelly found on page %d — %r price=%s", page, title, price)
+                    return {
+                        "title": title,
+                        "image_url": img or "",
+                        "price_aed": price,
+                        "area": item.get("Area_name") or "",
+                        "bedrooms": None,
+                    }
 
-        html = resp.text
-        soup = BeautifulSoup(html, "html.parser")
+            if not result.get("nextPage"):
+                break
 
-        # Try __NEXT_DATA__ first (Next.js embedded JSON with full project data)
-        next_data_tag = soup.find("script", id="__NEXT_DATA__")
-        if next_data_tag and next_data_tag.string:
-            try:
-                nd = json.loads(next_data_tag.string)
-                # Walk the props tree to find project data
-                props = nd.get("props", {}).get("pageProps", {})
-                # Try common keys
-                d = (props.get("project") or props.get("data") or
-                     props.get("projectData") or props.get("initialData") or {})
-                if not d and props:
-                    # Take the first dict value that looks like project data
-                    for v in props.values():
-                        if isinstance(v, dict) and (v.get("Project_name") or v.get("name") or v.get("title")):
-                            d = v
-                            break
-
-                if d:
-                    title = (d.get("Project_name") or d.get("project_name") or
-                             d.get("name") or d.get("title") or "")
-                    img = (d.get("cover_image") or d.get("cover") or
-                           (d.get("images") or [{}])[0].get("url") if d.get("images") else None)
-                    if isinstance(img, dict):
-                        img = img.get("url") or img.get("src")
-                    price = None
-                    if d.get("min_price") and float(d["min_price"]) > 0:
-                        price = float(d["min_price"])
-                    elif d.get("Starting_price"):
-                        sp = d["Starting_price"]
-                        if isinstance(sp, list):
-                            for item in sp:
-                                p = item.get("Price_from_AED") or item.get("price")
-                                if p and float(p) > 0:
-                                    price = float(p)
-                                    break
-                    area = d.get("Area_name") or d.get("area") or d.get("community") or ""
-                    unit_types = d.get("unit_types_available") or d.get("Unit_types") or ""
-                    if title:
-                        log.info("Reelly __NEXT_DATA__ — title=%r price=%s img=%r", title, price, img)
-                        return {
-                            "title": title,
-                            "image_url": img or "",
-                            "price_aed": price,
-                            "area": area,
-                            "bedrooms": unit_types[:60] if unit_types else None,
-                        }
-            except Exception as e:
-                log.warning("Reelly __NEXT_DATA__ parse failed: %s", e)
-
-        # Fallback: OG tags from the page
-        def og(prop):
-            tag = soup.find("meta", property=prop) or soup.find("meta", attrs={"name": prop})
-            return tag["content"].strip() if tag and tag.get("content") else None
-
-        title = og("og:title") or og("twitter:title") or ""
-        image = og("og:image") or og("twitter:image") or ""
-        # Strip generic Reelly page titles
-        if title.lower().strip() in ("offers for you", "reelly", "find.reelly.io", ""):
-            title = ""
-        price_text = og("og:description") or ""
-        price = _parse_price(price_text)
-
-        log.info("Reelly OG fallback — title=%r price=%s img=%r", title, price, image)
-        return {
-            "title": title,
-            "image_url": image,
-            "price_aed": price,
-            "area": "",
-            "bedrooms": None,
-        }
-
+        log.warning("Reelly: project %d not found in first 20 pages", project_id)
     except Exception as e:
-        log.error("Reelly scrape exception: %s", e)
-        return {}
+        log.error("Reelly API scan error: %s", e)
+
+    return {}
 
 def _scrape_html_source(url: str) -> dict:
     """Parse OG tags + JSON-LD from HTML for Bayut, PropertyFinder, etc."""
@@ -304,11 +280,10 @@ def _scrape_html_source(url: str) -> dict:
     except Exception:
         return {}
 
-def _scrape_og(url: str) -> dict:
+def _scrape_og(url: str, db=None) -> dict:
     """Route to best scraper based on URL domain."""
     if "reelly.io" in url:
-        # Only use Reelly API — never fall back to HTML (HTML just returns generic "Offers for you")
-        return _scrape_reelly(url)
+        return _scrape_reelly(url, db=db)
     return _scrape_html_source(url)
 
 
@@ -350,9 +325,9 @@ def debug_reelly(project_id: str):
 
 
 @router.post("/fetch-link")
-def fetch_link(body: FetchLinkRequest, current_user=Depends(get_current_user)):
+def fetch_link(body: FetchLinkRequest, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
     try:
-        data = _scrape_og(body.url)
+        data = _scrape_og(body.url, db=db)
         return data
     except Exception:
         return {}
