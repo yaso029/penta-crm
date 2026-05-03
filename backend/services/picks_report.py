@@ -184,24 +184,11 @@ def generate_picks_pdf(session, picks) -> bytes:
         if pick.size_sqft: specs_parts.append(f"📐  {int(pick.size_sqft):,} sqft")
         specs_str = "    ".join(specs_parts)
         notes_str  = pick.notes or ""
-        link_str   = (pick.listing_url or "")[:65] + ("…" if len(pick.listing_url or "") > 65 else "")
 
         # Fetch image
         img = _fetch_rl_image(pick.image_url, IMG_W, IMG_H) if pick.image_url else None
 
-        # Number badge
-        badge = Table(
-            [[_p(f'<font color="white" size="9"><b>#{i+1}</b></font>', normal)]],
-            colWidths=[10*mm],
-        )
-        badge.setStyle(TableStyle([
-            ("BACKGROUND",    (0,0),(-1,-1), NAVY),
-            ("ALIGN",         (0,0),(-1,-1), "CENTER"),
-            ("TOPPADDING",    (0,0),(-1,-1), 4),
-            ("BOTTOMPADDING", (0,0),(-1,-1), 4),
-        ]))
-
-        # Text block
+        # Text block — no raw URL shown to client
         txt = []
         txt.append(_p(
             f'<font color="#0A2342" size="12"><b>{title_str}</b></font>',
@@ -227,10 +214,6 @@ def generate_picks_pdf(session, picks) -> bytes:
                 f'<font color="#64748B" size="8"><i>{notes_str}</i></font>',
                 style(spaceAfter=4),
             ))
-        txt.append(_p(
-            f'<font color="#1155CC" size="7">{link_str}</font>',
-            normal,
-        ))
 
         if img:
             # Two-column: image left, text right
