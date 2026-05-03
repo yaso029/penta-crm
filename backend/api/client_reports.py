@@ -271,7 +271,7 @@ def _scrape_og(url: str) -> dict:
 
 
 @router.get("/debug/reelly/{project_id}")
-def debug_reelly(project_id: str, current_user=Depends(get_current_user)):
+def debug_reelly(project_id: str):
     """Admin debug: show raw Reelly API response for a project ID."""
     import os, httpx
     email    = os.environ.get("REELLY_EMAIL", "agentyassinammary@gmail.com")
