@@ -151,66 +151,76 @@ def _scrape_reelly(url: str) -> dict:
 
 def _scrape_html_source(url: str) -> dict:
     """Parse OG tags + JSON-LD from HTML for Bayut, PropertyFinder, etc."""
-    html = _fetch_html(url)
-    if not html:
-        return {}
+    try:
+        html = _fetch_html(url)
+        if not html:
+            return {}
 
-    from bs4 import BeautifulSoup
-    soup = BeautifulSoup(html, "lxml")
-
-    def og(prop):
-        tag = soup.find("meta", property=prop) or soup.find("meta", attrs={"name": prop})
-        return tag["content"].strip() if tag and tag.get("content") else None
-
-    title = og("og:title") or og("twitter:title") or (soup.title.string.strip() if soup.title else "") or ""
-    image = og("og:image") or og("twitter:image") or ""
-    description = og("og:description") or og("twitter:description") or ""
-
-    # Try JSON-LD for richer structured data (Bayut/PropertyFinder use this)
-    price = None
-    area = None
-    sqft = None
-    bedrooms = None
-    for script in soup.find_all("script", type="application/ld+json"):
+        from bs4 import BeautifulSoup
         try:
-            ld = json.loads(script.string or "{}")
-            if isinstance(ld, list):
-                ld = ld[0]
-            price = price or (float(str(ld.get("price", "")).replace(",", "")) if ld.get("price") else None)
-            if ld.get("address"):
-                area = area or ld["address"].get("addressLocality") or ld["address"].get("addressRegion")
-            if ld.get("floorSize"):
-                try:
-                    sqft = sqft or float(str(ld["floorSize"].get("value", "")).replace(",", ""))
-                except Exception:
-                    pass
-            if ld.get("numberOfRooms"):
-                bedrooms = bedrooms or str(ld["numberOfRooms"])
-            if not image and ld.get("image"):
-                img_val = ld["image"]
-                image = img_val[0] if isinstance(img_val, list) else img_val
+            soup = BeautifulSoup(html, "lxml")
         except Exception:
-            pass
+            soup = BeautifulSoup(html, "html.parser")
 
-    combined = f"{title} {description}"
-    price = price or _parse_price(combined)
-    bedrooms = bedrooms or _parse_beds(combined)
-    sqft = sqft or _parse_sqft(combined)
+        def og(prop):
+            tag = soup.find("meta", property=prop) or soup.find("meta", attrs={"name": prop})
+            return tag["content"].strip() if tag and tag.get("content") else None
 
-    clean_title = re.sub(
-        r"\s*[|\-–]\s*(?:Bayut|Property Finder|PropertyFinder|Reelly|dubizzle).*$",
-        "", title, flags=re.IGNORECASE
-    ).strip()
+        title_tag_text = ""
+        if soup.title:
+            title_tag_text = soup.title.get_text(strip=True)
 
-    return {
-        "title": clean_title or title,
-        "image_url": image,
-        "price_aed": price,
-        "bedrooms": bedrooms,
-        "area": area or "",
-        "size_sqft": sqft,
-        "description": description[:300] if description else "",
-    }
+        title = og("og:title") or og("twitter:title") or title_tag_text or ""
+        image = og("og:image") or og("twitter:image") or ""
+        description = og("og:description") or og("twitter:description") or ""
+
+        # Try JSON-LD for richer structured data (Bayut/PropertyFinder use this)
+        price = None
+        area = None
+        sqft = None
+        bedrooms = None
+        for script in soup.find_all("script", type="application/ld+json"):
+            try:
+                ld = json.loads(script.string or "{}")
+                if isinstance(ld, list):
+                    ld = ld[0]
+                price = price or (float(str(ld.get("price", "")).replace(",", "")) if ld.get("price") else None)
+                if ld.get("address"):
+                    area = area or ld["address"].get("addressLocality") or ld["address"].get("addressRegion")
+                if ld.get("floorSize"):
+                    try:
+                        sqft = sqft or float(str(ld["floorSize"].get("value", "")).replace(",", ""))
+                    except Exception:
+                        pass
+                if ld.get("numberOfRooms"):
+                    bedrooms = bedrooms or str(ld["numberOfRooms"])
+                if not image and ld.get("image"):
+                    img_val = ld["image"]
+                    image = img_val[0] if isinstance(img_val, list) else img_val
+            except Exception:
+                pass
+
+        combined = f"{title} {description}"
+        price = price or _parse_price(combined)
+        bedrooms = bedrooms or _parse_beds(combined)
+        sqft = sqft or _parse_sqft(combined)
+
+        clean_title = re.sub(
+            r"\s*[|\-–]\s*(?:Bayut|Property Finder|PropertyFinder|Reelly|dubizzle).*$",
+            "", title, flags=re.IGNORECASE
+        ).strip()
+
+        return {
+            "title": clean_title or title,
+            "image_url": image,
+            "price_aed": price,
+            "bedrooms": bedrooms,
+            "area": area or "",
+            "size_sqft": sqft,
+            "description": description[:300] if description else "",
+        }
+    except Exception:
+        return {}
 
 def _scrape_og(url: str) -> dict:
     """Route to best scraper based on URL domain."""
@@ -223,8 +233,11 @@ def _scrape_og(url: str) -> dict:
 
 @router.post("/fetch-link")
 def fetch_link(body: FetchLinkRequest, current_user=Depends(get_current_user)):
-    data = _scrape_og(body.url)
-    return data
+    try:
+        data = _scrape_og(body.url)
+        return data
+    except Exception:
+        return {}
 
 
 # ─── Property picks ───────────────────────────────────────────────────────────

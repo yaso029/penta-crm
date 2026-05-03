@@ -399,16 +399,12 @@ export default function ClientReports() {
   };
 
   const handleRefetch = async (pickId, updates) => {
-    try {
-      await api.put(`/api/client-reports/sessions/${selected.session_id}/picks/${pickId}`, {
-        ...updates,
-        price_aed: updates.price_aed ? parseFloat(String(updates.price_aed).replace(/,/g, '')) : null,
-        size_sqft: updates.size_sqft ? parseFloat(updates.size_sqft) : null,
-      });
-      fetchPicks(selected.session_id);
-    } catch {
-      // ignore
-    }
+    await api.put(`/api/client-reports/sessions/${selected.session_id}/picks/${pickId}`, {
+      ...updates,
+      price_aed: updates.price_aed ? parseFloat(String(updates.price_aed).replace(/,/g, '')) : null,
+      size_sqft: updates.size_sqft ? parseFloat(updates.size_sqft) : null,
+    });
+    fetchPicks(selected.session_id);
   };
 
   const handleDelete = async (pickId) => {
