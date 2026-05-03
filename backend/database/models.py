@@ -279,3 +279,91 @@ class AgentPromotion(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
     creator = relationship("User", foreign_keys=[created_by])
+
+
+# ─── AI Model Models ──────────────────────────────────────────────────────────
+
+class SecondaryListing(Base):
+    __tablename__ = "secondary_listings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    listing_id = Column(String(100), unique=True, nullable=False, index=True)
+    source = Column(String(50), nullable=False)
+    listing_url = Column(Text, nullable=False)
+    title = Column(Text)
+    price_aed = Column(Float)
+    size_sqft = Column(Float)
+    bedrooms = Column(String(20))
+    bathrooms = Column(String(20))
+    property_type = Column(String(50))
+    furnishing_status = Column(String(50))
+    floor_number = Column(String(20))
+    building_name = Column(String(200))
+    community = Column(String(200))
+    area = Column(String(200))
+    emirate = Column(String(100), default="Dubai")
+    agent_name = Column(String(200))
+    agency_name = Column(String(200))
+    days_on_market = Column(Integer)
+    scrape_timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    is_active = Column(Boolean, default=True)
+
+
+class OffPlanListing(Base):
+    __tablename__ = "offplan_listings"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    listing_url = Column(Text, nullable=False, unique=True)
+    source = Column(String(50), default="reelly")
+    project_name = Column(String(300))
+    developer_name = Column(String(200))
+    handover_year = Column(Integer)
+    completion_percentage = Column(Float)
+    starting_price_aed = Column(Float)
+    unit_types_available = Column(Text)
+    payment_plan_details = Column(Text)
+    completion_date_text = Column(String(50))
+    sale_status = Column(String(50))
+    cover_image_url = Column(Text)
+    max_commission = Column(Integer)
+    detail_json = Column(Text)
+    detail_fetched_at = Column(Integer)
+    community = Column(String(200))
+    area = Column(String(200))
+    emirate = Column(String(100), default="Dubai")
+    scrape_timestamp = Column(DateTime, default=datetime.utcnow, nullable=False)
+    is_active = Column(Boolean, default=True)
+
+
+class ClientIntake(Base):
+    __tablename__ = "client_intakes"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String(64), unique=True, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    completed = Column(Boolean, default=False)
+    client_name = Column(String(200))
+    client_phone = Column(String(50))
+    client_email = Column(String(200))
+    budget_aed = Column(String(200))
+    property_type = Column(String(200))
+    bedrooms = Column(String(100))
+    preferred_areas = Column(Text)
+    market_preference = Column(String(50))
+    purchase_purpose = Column(String(50))
+    messages_json = Column(Text, default="[]")
+
+
+class AIScrapeLog(Base):
+    __tablename__ = "ai_scrape_logs"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    source = Column(String(50), nullable=False)
+    started_at = Column(DateTime, default=datetime.utcnow)
+    finished_at = Column(DateTime, nullable=True)
+    listings_found = Column(Integer, default=0)
+    listings_new = Column(Integer, default=0)
+    listings_updated = Column(Integer, default=0)
+    status = Column(String(20), default="running")
+    error_message = Column(Text, nullable=True)

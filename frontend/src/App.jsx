@@ -24,6 +24,13 @@ import ListProperty from './pages/agents/ListProperty';
 import Events from './pages/agents/Events';
 import Videos from './pages/agents/Videos';
 import Promotions from './pages/agents/Promotions';
+import AIModelLayout from './components/AIModelLayout';
+import AIDashboard from './pages/aimodel/Dashboard';
+import OffPlanListings from './pages/aimodel/OffPlanListings';
+import SecondaryListings from './pages/aimodel/SecondaryListings';
+import ClientMatcher from './pages/aimodel/ClientMatcher';
+import IntakeAI from './pages/aimodel/IntakeAI';
+import ScrapeControl from './pages/aimodel/ScrapeControl';
 
 function PrivateRoute({ children, roles }) {
   const { user } = useAuth();
@@ -83,6 +90,20 @@ export default function App() {
         <Route path="events" element={<Events />} />
         <Route path="videos" element={<Videos />} />
         <Route path="promotions" element={<Promotions />} />
+      </Route>
+
+      {/* AI Model module — admin only */}
+      <Route path="/ai" element={
+        <PrivateRoute roles={['admin']}>
+          <AIModelLayout />
+        </PrivateRoute>
+      }>
+        <Route index element={<AIDashboard />} />
+        <Route path="offplan" element={<OffPlanListings />} />
+        <Route path="secondary" element={<SecondaryListings />} />
+        <Route path="match" element={<ClientMatcher />} />
+        <Route path="intake" element={<IntakeAI />} />
+        <Route path="scrape" element={<ScrapeControl />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />

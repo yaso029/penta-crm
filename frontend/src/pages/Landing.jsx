@@ -35,6 +35,16 @@ const MODULES = [
     path: '/agents',
   },
   {
+    key: 'ai',
+    icon: '🧠',
+    title: 'AI Model',
+    subtitle: 'Real Estate Intelligence',
+    desc: 'Market data from Reelly & Bayut, AI-powered client matching, intake conversations and PDF reports.',
+    bg: 'linear-gradient(135deg, #2d1e0e 0%, #1a1208 100%)',
+    type: 'restricted',
+    path: '/ai',
+  },
+  {
     key: 'hr',
     icon: '👥',
     title: 'HR',

@@ -11,6 +11,7 @@ from backend.api import auth, users, leads, webhook, notifications, dashboard, i
 from backend.services.sync_scheduler import start_scheduler, stop_scheduler
 from backend.api import partners, whatsapp_routes, email_routes, commissions, partnerships_dashboard
 from backend.api import agents_dashboard
+from backend.api import ai_routes
 import os
 
 app = FastAPI(title="Penta CRM API", version="2.0.0")
@@ -42,6 +43,9 @@ app.include_router(partnerships_dashboard.router)
 
 # Agents Dashboard routes
 app.include_router(agents_dashboard.router)
+
+# AI Model routes (admin-only)
+app.include_router(ai_routes.router)
 
 
 def seed_admin():
