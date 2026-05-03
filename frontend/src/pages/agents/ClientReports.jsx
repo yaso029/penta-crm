@@ -160,6 +160,7 @@ function FetchBar({ onFetched }) {
 function PickCard({ pick, index, onSave, onDelete, onRefetch }) {
   const [editing, setEditing] = useState(!pick.title); // open if just fetched with no title
   const [refetching, setRefetching] = useState(false);
+  const [refetchStatus, setRefetchStatus] = useState(null); // 'ok' | 'empty' | 'error'
   const [form, setForm] = useState({
     title: pick.title || '',
     price_aed: pick.price_aed || '',
@@ -177,9 +178,16 @@ function PickCard({ pick, index, onSave, onDelete, onRefetch }) {
 
   const handleRefetch = async () => {
     setRefetching(true);
+    setRefetchStatus(null);
     try {
       const r = await api.post('/api/client-reports/fetch-link', { url: pick.listing_url });
       const fresh = r.data;
+      const gotSomething = fresh.title || fresh.price_aed || fresh.image_url;
+      if (!gotSomething) {
+        setRefetchStatus('empty');
+        setTimeout(() => setRefetchStatus(null), 4000);
+        return;
+      }
       const merged = {
         listing_url: pick.listing_url,
         title: fresh.title || form.title,
@@ -194,8 +202,11 @@ function PickCard({ pick, index, onSave, onDelete, onRefetch }) {
       };
       setForm(merged);
       await onRefetch(pick.id, merged);
-    } catch {
-      // silently fail — form still has old values
+      setRefetchStatus('ok');
+      setTimeout(() => setRefetchStatus(null), 3000);
+    } catch (e) {
+      setRefetchStatus('error');
+      setTimeout(() => setRefetchStatus(null), 4000);
     } finally {
       setRefetching(false);
     }
@@ -276,6 +287,19 @@ function PickCard({ pick, index, onSave, onDelete, onRefetch }) {
           </button>
         </div>
       </div>
+
+      {/* Re-fetch status */}
+      {refetchStatus && (
+        <div style={{
+          padding: '6px 14px', fontSize: 12, fontWeight: 600,
+          background: refetchStatus === 'ok' ? '#d1fae5' : refetchStatus === 'empty' ? '#fef3c7' : '#fee2e2',
+          color: refetchStatus === 'ok' ? '#065f46' : refetchStatus === 'empty' ? '#92400e' : '#991b1b',
+        }}>
+          {refetchStatus === 'ok' && '✓ Data refreshed successfully'}
+          {refetchStatus === 'empty' && '⚠️ Nothing scraped — paste a direct listing URL (not a search page), then edit manually'}
+          {refetchStatus === 'error' && '✕ Request failed — check your connection or try again'}
+        </div>
+      )}
 
       {/* Inline edit form */}
       {editing && (
