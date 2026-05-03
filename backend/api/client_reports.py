@@ -119,8 +119,14 @@ def _reelly_login() -> str | None:
 
 
 def _scrape_reelly(url: str) -> dict:
-    """Use Reelly API directly — much better than scraping the HTML."""
+    """
+    Scrape a find.reelly.io project page.
+    The Reelly API has no single-project GET endpoint — project data is
+    embedded as __NEXT_DATA__ JSON in the HTML page. We fetch the page
+    with an auth cookie so the server includes full project data.
+    """
     import logging, httpx
+    from bs4 import BeautifulSoup
     log = logging.getLogger(__name__)
 
     m = re.search(r"/projects/(\d+)", url)
@@ -134,57 +140,93 @@ def _scrape_reelly(url: str) -> dict:
             log.error("Reelly login failed — check REELLY_EMAIL / REELLY_PASSWORD on Railway")
             return {}
 
-        resp = httpx.get(
-            f"https://api.reelly.io/api:sk5LT7jx/projects/{project_id}",
-            headers={"authToken": token},
-            timeout=15,
-        )
+        # Fetch the project's HTML page with auth token as a header/cookie
+        headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                          "(KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+            "authToken": token,
+            "Cookie": f"authToken={token}",
+        }
+        project_url = f"https://find.reelly.io/projects/{project_id}"
+        resp = httpx.get(project_url, headers=headers, timeout=20, follow_redirects=True)
         if resp.status_code != 200:
-            log.error("Reelly project fetch returned %s", resp.status_code)
+            log.error("Reelly HTML page returned %s for %s", resp.status_code, project_url)
             return {}
 
-        d = resp.json()
-        log.info("Reelly project %s keys: %s", project_id, list(d.keys())[:20])
+        html = resp.text
+        soup = BeautifulSoup(html, "html.parser")
 
-        # Image
-        img = None
-        if d.get("cover_image"):
-            img = d["cover_image"]
-        elif d.get("images"):
-            for item in (d["images"] if isinstance(d["images"], list) else []):
-                img = item.get("url") or item.get("image_url")
-                if img:
-                    break
+        # Try __NEXT_DATA__ first (Next.js embedded JSON with full project data)
+        next_data_tag = soup.find("script", id="__NEXT_DATA__")
+        if next_data_tag and next_data_tag.string:
+            try:
+                nd = json.loads(next_data_tag.string)
+                # Walk the props tree to find project data
+                props = nd.get("props", {}).get("pageProps", {})
+                # Try common keys
+                d = (props.get("project") or props.get("data") or
+                     props.get("projectData") or props.get("initialData") or {})
+                if not d and props:
+                    # Take the first dict value that looks like project data
+                    for v in props.values():
+                        if isinstance(v, dict) and (v.get("Project_name") or v.get("name") or v.get("title")):
+                            d = v
+                            break
 
-        # Price — Reelly stores as int (min_price) or list (starting_price)
-        price = None
-        if d.get("min_price") and float(d["min_price"]) > 0:
-            price = float(d["min_price"])
-        elif d.get("starting_price"):
-            sp = d["starting_price"]
-            if isinstance(sp, list):
-                for item in sp:
-                    p = item.get("Price_from_AED") or item.get("price_from_aed") or item.get("price")
-                    if p and float(p) > 0:
-                        price = float(p)
-                        break
-            else:
-                try:
-                    price = float(str(sp).replace(",", "").replace("AED", "").strip())
-                except Exception:
-                    pass
+                if d:
+                    title = (d.get("Project_name") or d.get("project_name") or
+                             d.get("name") or d.get("title") or "")
+                    img = (d.get("cover_image") or d.get("cover") or
+                           (d.get("images") or [{}])[0].get("url") if d.get("images") else None)
+                    if isinstance(img, dict):
+                        img = img.get("url") or img.get("src")
+                    price = None
+                    if d.get("min_price") and float(d["min_price"]) > 0:
+                        price = float(d["min_price"])
+                    elif d.get("Starting_price"):
+                        sp = d["Starting_price"]
+                        if isinstance(sp, list):
+                            for item in sp:
+                                p = item.get("Price_from_AED") or item.get("price")
+                                if p and float(p) > 0:
+                                    price = float(p)
+                                    break
+                    area = d.get("Area_name") or d.get("area") or d.get("community") or ""
+                    unit_types = d.get("unit_types_available") or d.get("Unit_types") or ""
+                    if title:
+                        log.info("Reelly __NEXT_DATA__ — title=%r price=%s img=%r", title, price, img)
+                        return {
+                            "title": title,
+                            "image_url": img or "",
+                            "price_aed": price,
+                            "area": area,
+                            "bedrooms": unit_types[:60] if unit_types else None,
+                        }
+            except Exception as e:
+                log.warning("Reelly __NEXT_DATA__ parse failed: %s", e)
 
-        unit_types = d.get("unit_types_available") or d.get("Unit_types") or ""
-        title = d.get("Project_name") or d.get("project_name") or d.get("name") or ""
-        log.info("Reelly result — title=%r price=%s img=%r", title, price, img)
+        # Fallback: OG tags from the page
+        def og(prop):
+            tag = soup.find("meta", property=prop) or soup.find("meta", attrs={"name": prop})
+            return tag["content"].strip() if tag and tag.get("content") else None
 
+        title = og("og:title") or og("twitter:title") or ""
+        image = og("og:image") or og("twitter:image") or ""
+        # Strip generic Reelly page titles
+        if title.lower().strip() in ("offers for you", "reelly", "find.reelly.io", ""):
+            title = ""
+        price_text = og("og:description") or ""
+        price = _parse_price(price_text)
+
+        log.info("Reelly OG fallback — title=%r price=%s img=%r", title, price, image)
         return {
             "title": title,
-            "image_url": img or "",
+            "image_url": image,
             "price_aed": price,
-            "area": d.get("Area_name") or d.get("area") or d.get("community") or "",
-            "bedrooms": unit_types[:60] if unit_types else None,
+            "area": "",
+            "bedrooms": None,
         }
+
     except Exception as e:
         log.error("Reelly scrape exception: %s", e)
         return {}
@@ -272,25 +314,24 @@ def _scrape_og(url: str) -> dict:
 
 @router.get("/debug/reelly/{project_id}")
 def debug_reelly(project_id: str):
-    """Admin debug: show raw Reelly API response for a project ID."""
-    import os, httpx
-    email    = os.environ.get("REELLY_EMAIL", "agentyassinammary@gmail.com")
-    password = os.environ.get("REELLY_PASSWORD", "Penta@2024$$")
+    """Debug: fetch Reelly project HTML and show what data is embedded."""
+    import httpx
+    from bs4 import BeautifulSoup
+    token = _reelly_login()
+    if not token:
+        return {"step": "login_failed"}
+    headers = {
+        "User-Agent": "Mozilla/5.0",
+        "authToken": token,
+        "Cookie": f"authToken={token}",
+    }
     try:
-        login = httpx.post(
-            "https://api.reelly.io/api:sk5LT7jx/auth/login0",
-            json={"email": email, "password": password},
-            timeout=15,
-        )
-        if login.status_code != 200:
-            return {"step": "login_failed", "status": login.status_code, "body": login.text[:500]}
-        token = login.json().get("authToken")
-        proj = httpx.get(
-            f"https://api.reelly.io/api:sk5LT7jx/projects/{project_id}",
-            headers={"authToken": token},
-            timeout=15,
-        )
-        return {"step": "ok", "status": proj.status_code, "keys": list(proj.json().keys()) if proj.status_code == 200 else [], "body_preview": proj.text[:1000]}
+        resp = httpx.get(f"https://find.reelly.io/projects/{project_id}", headers=headers, timeout=20, follow_redirects=True)
+        soup = BeautifulSoup(resp.text, "html.parser")
+        tag = soup.find("script", id="__NEXT_DATA__")
+        nd = json.loads(tag.string) if tag and tag.string else {}
+        props = nd.get("props", {}).get("pageProps", {})
+        return {"status": resp.status_code, "next_data_keys": list(props.keys()), "props_preview": str(props)[:2000]}
     except Exception as e:
         return {"step": "exception", "error": str(e)}
 
