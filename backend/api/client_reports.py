@@ -100,53 +100,93 @@ def _fetch_html(url: str) -> str | None:
     except Exception:
         return None
 
+def _reelly_login() -> str | None:
+    """Login to Reelly API using env vars, return authToken or None."""
+    import os, httpx
+    email    = os.environ.get("REELLY_EMAIL", "agentyassinammary@gmail.com")
+    password = os.environ.get("REELLY_PASSWORD", "Penta@2024$$")
+    try:
+        r = httpx.post(
+            "https://api.reelly.io/api:sk5LT7jx/auth/login0",
+            json={"email": email, "password": password},
+            timeout=15,
+        )
+        if r.status_code != 200:
+            return None
+        return r.json().get("authToken")
+    except Exception:
+        return None
+
+
 def _scrape_reelly(url: str) -> dict:
     """Use Reelly API directly — much better than scraping the HTML."""
+    import logging, httpx
+    log = logging.getLogger(__name__)
+
     m = re.search(r"/projects/(\d+)", url)
     if not m:
         return {}
     project_id = m.group(1)
+
     try:
-        from backend.scrapers.reelly_scraper import _login
-        import httpx
-        token = _login()
+        token = _reelly_login()
+        if not token:
+            log.error("Reelly login failed — check REELLY_EMAIL / REELLY_PASSWORD on Railway")
+            return {}
+
         resp = httpx.get(
             f"https://api.reelly.io/api:sk5LT7jx/projects/{project_id}",
             headers={"authToken": token},
             timeout=15,
         )
         if resp.status_code != 200:
+            log.error("Reelly project fetch returned %s", resp.status_code)
             return {}
+
         d = resp.json()
-        # Extract cover image
+        log.info("Reelly project %s keys: %s", project_id, list(d.keys())[:20])
+
+        # Image
         img = None
         if d.get("cover_image"):
             img = d["cover_image"]
-        elif d.get("images") and len(d["images"]) > 0:
-            img = d["images"][0].get("url") or d["images"][0].get("image_url")
-
-        # Parse starting price
-        price = None
-        for k in ("starting_price", "min_price", "Starting_price", "price_from"):
-            if d.get(k):
-                try:
-                    price = float(str(d[k]).replace(",", "").replace("AED", "").strip())
+        elif d.get("images"):
+            for item in (d["images"] if isinstance(d["images"], list) else []):
+                img = item.get("url") or item.get("image_url")
+                if img:
                     break
+
+        # Price — Reelly stores as int (min_price) or list (starting_price)
+        price = None
+        if d.get("min_price") and float(d["min_price"]) > 0:
+            price = float(d["min_price"])
+        elif d.get("starting_price"):
+            sp = d["starting_price"]
+            if isinstance(sp, list):
+                for item in sp:
+                    p = item.get("Price_from_AED") or item.get("price_from_aed") or item.get("price")
+                    if p and float(p) > 0:
+                        price = float(p)
+                        break
+            else:
+                try:
+                    price = float(str(sp).replace(",", "").replace("AED", "").strip())
                 except Exception:
                     pass
 
-        # Unit types → bedrooms summary
         unit_types = d.get("unit_types_available") or d.get("Unit_types") or ""
+        title = d.get("Project_name") or d.get("project_name") or d.get("name") or ""
+        log.info("Reelly result — title=%r price=%s img=%r", title, price, img)
 
         return {
-            "title": d.get("Project_name") or d.get("project_name") or d.get("name") or "",
+            "title": title,
             "image_url": img or "",
             "price_aed": price,
             "area": d.get("Area_name") or d.get("area") or d.get("community") or "",
             "bedrooms": unit_types[:60] if unit_types else None,
-            "description": (d.get("Overview") or d.get("overview") or "")[:300],
         }
-    except Exception:
+    except Exception as e:
+        log.error("Reelly scrape exception: %s", e)
         return {}
 
 def _scrape_html_source(url: str) -> dict:
