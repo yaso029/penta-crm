@@ -18,6 +18,7 @@ import Templates from './pages/partnerships/Templates';
 import Replies from './pages/partnerships/Replies';
 import Commissions from './pages/partnerships/Commissions';
 import AgentsDashboard from './pages/agents/Dashboard';
+import ClientReports from './pages/agents/ClientReports';
 import PropertyVault from './pages/agents/PropertyVault';
 import PropertyDetail from './pages/agents/PropertyDetail';
 import ListProperty from './pages/agents/ListProperty';
@@ -90,6 +91,7 @@ export default function App() {
         <Route path="events" element={<Events />} />
         <Route path="videos" element={<Videos />} />
         <Route path="promotions" element={<Promotions />} />
+        <Route path="client-reports" element={<ClientReports />} />
       </Route>
 
       {/* AI Model module — admin only */}

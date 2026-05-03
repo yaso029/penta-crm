@@ -355,6 +355,29 @@ class ClientIntake(Base):
     messages_json = Column(Text, default="[]")
 
 
+class AgentPropertyPick(Base):
+    __tablename__ = "agent_property_picks"
+
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    session_id = Column(String(64), ForeignKey("client_intakes.session_id"), nullable=False, index=True)
+    added_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    listing_url = Column(Text, nullable=False)
+    title = Column(Text, nullable=True)
+    price_aed = Column(Float, nullable=True)
+    bedrooms = Column(String(20), nullable=True)
+    bathrooms = Column(String(20), nullable=True)
+    area = Column(String(200), nullable=True)
+    size_sqft = Column(Float, nullable=True)
+    property_type = Column(String(50), nullable=True)
+    image_url = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+    sort_order = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    session = relationship("ClientIntake", foreign_keys=[session_id])
+    agent = relationship("User", foreign_keys=[added_by])
+
+
 class AIScrapeLog(Base):
     __tablename__ = "ai_scrape_logs"
 
