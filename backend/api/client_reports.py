@@ -314,24 +314,37 @@ def _scrape_og(url: str) -> dict:
 
 @router.get("/debug/reelly/{project_id}")
 def debug_reelly(project_id: str):
-    """Debug: fetch Reelly project HTML and show what data is embedded."""
+    """Debug: search Reelly API for project by ID."""
     import httpx
-    from bs4 import BeautifulSoup
     token = _reelly_login()
     if not token:
         return {"step": "login_failed"}
-    headers = {
-        "User-Agent": "Mozilla/5.0",
-        "authToken": token,
-        "Cookie": f"authToken={token}",
-    }
+    headers = {"authToken": token}
     try:
-        resp = httpx.get(f"https://find.reelly.io/projects/{project_id}", headers=headers, timeout=20, follow_redirects=True)
-        soup = BeautifulSoup(resp.text, "html.parser")
-        tag = soup.find("script", id="__NEXT_DATA__")
-        nd = json.loads(tag.string) if tag and tag.string else {}
-        props = nd.get("props", {}).get("pageProps", {})
-        return {"status": resp.status_code, "next_data_keys": list(props.keys()), "props_preview": str(props)[:2000]}
+        # Try searching with project_id as search term
+        r = httpx.get(
+            "https://api.reelly.io/api:sk5LT7jx/projectsExternalSearch",
+            params={"search_field": project_id, "page": 1},
+            headers=headers, timeout=20,
+        )
+        data = r.json()
+        result = data.get("result_1", data)
+        items = result.get("items", []) if isinstance(result, dict) else []
+        # Also try fetching first page to see structure
+        r2 = httpx.get(
+            "https://api.reelly.io/api:sk5LT7jx/projectsExternalSearch",
+            params={"search_field": "", "page": 1},
+            headers=headers, timeout=20,
+        )
+        d2 = r2.json()
+        res2 = d2.get("result_1", d2)
+        sample = (res2.get("items", []) or [{}])[0] if isinstance(res2, dict) else {}
+        return {
+            "search_by_id_count": len(items),
+            "search_by_id_items": [{"id": i.get("id"), "name": i.get("Project_name")} for i in items[:5]],
+            "sample_item_keys": list(sample.keys()),
+            "sample_item": {k: sample[k] for k in list(sample.keys())[:15]},
+        }
     except Exception as e:
         return {"step": "exception", "error": str(e)}
 
