@@ -4,6 +4,114 @@ import api from '../../api';
 const GOLD = '#C9A84C';
 const NAVY = '#0A2342';
 
+// ─── Contact form overlay (shown when AI is done collecting requirements) ────
+
+function ContactForm({ sessionId, onDone }) {
+  const [form, setForm] = useState({ client_name: '', client_phone: '', client_email: '' });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  const set = (k, v) => setForm(p => ({ ...p, [k]: v }));
+
+  const handleSubmit = async () => {
+    if (!form.client_name.trim()) { setError('Name is required'); return; }
+    setSaving(true); setError(null);
+    try {
+      await api.post(`/api/ai/intake/${sessionId}/complete`, form);
+      onDone();
+    } catch {
+      setError('Failed to save — please try again');
+      setSaving(false);
+    }
+  };
+
+  const inputStyle = {
+    width: '100%', padding: '12px 14px', borderRadius: 9, fontSize: 15,
+    border: '1.5px solid #e2e8f0', outline: 'none', background: '#f8fafc',
+    boxSizing: 'border-box', marginTop: 6,
+  };
+
+  return (
+    <div style={{
+      position: 'absolute', inset: 0, background: 'rgba(10,35,66,0.7)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 50,
+      borderRadius: 14,
+    }}>
+      <div style={{
+        background: '#fff', borderRadius: 16, padding: '36px 32px', width: 380,
+        boxShadow: '0 24px 60px rgba(0,0,0,0.3)',
+      }}>
+        <div style={{ textAlign: 'center', marginBottom: 24 }}>
+          <div style={{ fontSize: 36, marginBottom: 8 }}>✅</div>
+          <div style={{ fontSize: 18, fontWeight: 800, color: '#0d1f3c' }}>
+            Requirements captured!
+          </div>
+          <div style={{ fontSize: 13, color: '#888', marginTop: 6, lineHeight: 1.5 }}>
+            Just a few contact details to complete the client profile.
+          </div>
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            Full Name *
+          </label>
+          <input
+            value={form.client_name}
+            onChange={e => set('client_name', e.target.value)}
+            placeholder="e.g. Ahmed Al Mansoori"
+            style={inputStyle}
+            autoFocus
+          />
+        </div>
+
+        <div style={{ marginBottom: 14 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            Phone / WhatsApp
+          </label>
+          <input
+            value={form.client_phone}
+            onChange={e => set('client_phone', e.target.value)}
+            placeholder="+971 50 123 4567"
+            style={inputStyle}
+          />
+        </div>
+
+        <div style={{ marginBottom: 24 }}>
+          <label style={{ fontSize: 11, fontWeight: 700, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+            Email
+          </label>
+          <input
+            value={form.client_email}
+            onChange={e => set('client_email', e.target.value)}
+            placeholder="client@example.com"
+            style={inputStyle}
+            type="email"
+          />
+        </div>
+
+        {error && (
+          <div style={{ color: '#dc2626', fontSize: 13, marginBottom: 12, textAlign: 'center' }}>{error}</div>
+        )}
+
+        <button
+          onClick={handleSubmit}
+          disabled={saving}
+          style={{
+            width: '100%', padding: '13px', borderRadius: 9, border: 'none',
+            background: saving ? '#e2e8f0' : GOLD,
+            color: saving ? '#94a3b8' : NAVY,
+            fontWeight: 800, fontSize: 15, cursor: saving ? 'not-allowed' : 'pointer',
+          }}
+        >
+          {saving ? 'Saving…' : 'Complete Intake →'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Session card in list ─────────────────────────────────────────────────────
+
 function SessionCard({ s, onSelect, onReport }) {
   return (
     <div
@@ -23,9 +131,7 @@ function SessionCard({ s, onSelect, onReport }) {
             {s.client_name || 'Unnamed Client'}
           </div>
           <div style={{ fontSize: 12, color: '#888', marginTop: 2 }}>
-            {s.client_phone && `📞 ${s.client_phone} · `}
-            {s.budget_aed && `💰 ${s.budget_aed} · `}
-            {s.property_type && s.property_type}
+            {[s.client_phone, s.budget_aed, s.property_type].filter(Boolean).join(' · ')}
           </div>
           <div style={{ fontSize: 11, color: '#aaa', marginTop: 4 }}>
             {s.created_at ? new Date(s.created_at).toLocaleString() : ''}
@@ -52,6 +158,8 @@ function SessionCard({ s, onSelect, onReport }) {
   );
 }
 
+// ─── Main component ───────────────────────────────────────────────────────────
+
 export default function IntakeAI() {
   const [sessions, setSessions] = useState([]);
   const [activeSession, setActiveSession] = useState(null);
@@ -59,7 +167,8 @@ export default function IntakeAI() {
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [starting, setStarting] = useState(false);
-  const [view, setView] = useState('list'); // 'list' | 'chat'
+  const [showContactForm, setShowContactForm] = useState(false);
+  const [view, setView] = useState('list');
   const bottomRef = useRef(null);
 
   const fetchSessions = () => api.get('/api/ai/intake/sessions').then(r => setSessions(r.data)).catch(() => {});
@@ -68,7 +177,7 @@ export default function IntakeAI() {
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, showContactForm]);
 
   const startSession = async () => {
     setStarting(true);
@@ -77,6 +186,7 @@ export default function IntakeAI() {
       const sess = { session_id: r.data.session_id, client_name: null, completed: false };
       setActiveSession(sess);
       setMessages([{ role: 'assistant', content: r.data.message }]);
+      setShowContactForm(false);
       setView('chat');
       fetchSessions();
     } catch {
@@ -89,6 +199,7 @@ export default function IntakeAI() {
   const selectSession = (s) => {
     setActiveSession(s);
     setMessages([]);
+    setShowContactForm(false);
     setView('chat');
   };
 
@@ -99,11 +210,13 @@ export default function IntakeAI() {
     setMessages(p => [...p, { role: 'user', content: userMsg }]);
     setSending(true);
     try {
-      const r = await api.post('/api/ai/intake/message', { session_id: activeSession.session_id, message: userMsg });
+      const r = await api.post('/api/ai/intake/message', {
+        session_id: activeSession.session_id,
+        message: userMsg,
+      });
       setMessages(p => [...p, { role: 'assistant', content: r.data.message }]);
-      if (r.data.completed) {
-        setActiveSession(s => ({ ...s, completed: true }));
-        fetchSessions();
+      if (r.data.ready) {
+        setShowContactForm(true);
       }
     } catch {
       setMessages(p => [...p, { role: 'assistant', content: '⚠️ Error — please try again.' }]);
@@ -112,11 +225,19 @@ export default function IntakeAI() {
     }
   };
 
+  const handleContactDone = () => {
+    setShowContactForm(false);
+    setActiveSession(s => ({ ...s, completed: true }));
+    fetchSessions();
+    setView('list');
+  };
+
   const downloadReport = async (sessionId) => {
     try {
       const r = await api.post(`/api/ai/intake/${sessionId}/report`, {}, { responseType: 'blob' });
       const url = URL.createObjectURL(new Blob([r.data], { type: 'application/pdf' }));
-      const a = document.createElement('a'); a.href = url; a.download = `intake_${sessionId.slice(0, 8)}.pdf`;
+      const a = document.createElement('a'); a.href = url;
+      a.download = `intake_${sessionId.slice(0, 8)}.pdf`;
       a.click(); URL.revokeObjectURL(url);
     } catch { alert('Failed to generate report'); }
   };
@@ -125,18 +246,22 @@ export default function IntakeAI() {
     <div>
       <div style={{ marginBottom: 20 }}>
         <div style={{ fontSize: 22, fontWeight: 800, color: '#0d1f3c' }}>Intake AI</div>
-        <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>Claude-powered client intake conversations</div>
+        <div style={{ fontSize: 13, color: '#888', marginTop: 2 }}>
+          AI collects property requirements — contact details captured via form at the end
+        </div>
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '300px 1fr', gap: 16, height: 'calc(100vh - 200px)' }}>
+
         {/* Session list */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        <div style={{ display: 'flex', flexDirection: 'column' }}>
           <button
             onClick={startSession}
             disabled={starting}
             style={{
               padding: '11px', borderRadius: 10, border: 'none',
-              background: starting ? '#e2e8f0' : GOLD, color: starting ? '#94a3b8' : NAVY,
+              background: starting ? '#e2e8f0' : GOLD,
+              color: starting ? '#94a3b8' : NAVY,
               fontWeight: 800, fontSize: 13, cursor: starting ? 'not-allowed' : 'pointer',
               marginBottom: 12,
             }}
@@ -152,16 +277,24 @@ export default function IntakeAI() {
           </div>
         </div>
 
-        {/* Chat */}
+        {/* Chat panel */}
         {view === 'list' ? (
-          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb', fontSize: 14 }}>
-            <div style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 40, marginBottom: 12 }}>🤖</div>
-              <div>Select a session or start a new one</div>
-            </div>
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#bbb', flexDirection: 'column', gap: 8 }}>
+            <div style={{ fontSize: 40, marginBottom: 4 }}>🤖</div>
+            <div style={{ fontSize: 14 }}>Start a new session or select one from the list</div>
           </div>
         ) : (
-          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #eee', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+          <div style={{ background: '#fff', borderRadius: 14, border: '1px solid #eee', display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' }}>
+
+            {/* Contact form overlay */}
+            {showContactForm && (
+              <ContactForm
+                sessionId={activeSession?.session_id}
+                onDone={handleContactDone}
+              />
+            )}
+
+            {/* Header */}
             <div style={{ padding: '14px 20px', borderBottom: '1px solid #eee', display: 'flex', alignItems: 'center', gap: 10 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: '#0d1f3c' }}>
                 {activeSession?.client_name || 'New Session'}
@@ -175,24 +308,16 @@ export default function IntakeAI() {
               >
                 ← Sessions
               </button>
-              {activeSession?.completed && (
-                <button
-                  onClick={() => downloadReport(activeSession.session_id)}
-                  style={{ padding: '4px 12px', borderRadius: 6, border: `1px solid ${NAVY}`, background: NAVY, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer' }}
-                >
-                  📄 PDF
-                </button>
-              )}
             </div>
 
+            {/* Messages */}
             <div style={{ flex: 1, overflowY: 'auto', padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
               {messages.map((m, i) => (
                 <div key={i} style={{ display: 'flex', justifyContent: m.role === 'user' ? 'flex-end' : 'flex-start' }}>
                   <div style={{
-                    maxWidth: '72%', padding: '10px 14px', borderRadius: 12,
+                    maxWidth: '72%', padding: '10px 14px', borderRadius: 12, fontSize: 14, lineHeight: 1.55,
                     background: m.role === 'user' ? NAVY : '#f1f5f9',
                     color: m.role === 'user' ? '#fff' : '#0d1f3c',
-                    fontSize: 14, lineHeight: 1.55,
                     borderBottomRightRadius: m.role === 'user' ? 2 : 12,
                     borderBottomLeftRadius: m.role === 'assistant' ? 2 : 12,
                   }}>
@@ -203,14 +328,15 @@ export default function IntakeAI() {
               {sending && (
                 <div style={{ display: 'flex' }}>
                   <div style={{ padding: '10px 14px', borderRadius: 12, background: '#f1f5f9', color: '#888', fontSize: 13 }}>
-                    <span style={{ animation: 'pulse 1s infinite' }}>✦ Thinking…</span>
+                    ✦ Thinking…
                   </div>
                 </div>
               )}
               <div ref={bottomRef} />
             </div>
 
-            {!activeSession?.completed && (
+            {/* Input */}
+            {!activeSession?.completed && !showContactForm && (
               <div style={{ padding: '12px 16px', borderTop: '1px solid #eee', display: 'flex', gap: 8 }}>
                 <input
                   value={input}
@@ -219,8 +345,8 @@ export default function IntakeAI() {
                   placeholder="Type a message…"
                   disabled={sending}
                   style={{
-                    flex: 1, padding: '10px 14px', borderRadius: 8, border: '1px solid #e2e8f0',
-                    fontSize: 14, outline: 'none', background: '#f8fafc',
+                    flex: 1, padding: '10px 14px', borderRadius: 8,
+                    border: '1px solid #e2e8f0', fontSize: 14, outline: 'none', background: '#f8fafc',
                   }}
                 />
                 <button
@@ -228,9 +354,9 @@ export default function IntakeAI() {
                   disabled={sending || !input.trim()}
                   style={{
                     padding: '10px 18px', borderRadius: 8, border: 'none',
-                    background: (!input.trim() || sending) ? '#e2e8f0' : NAVY,
-                    color: (!input.trim() || sending) ? '#94a3b8' : '#fff',
-                    fontWeight: 700, cursor: (!input.trim() || sending) ? 'not-allowed' : 'pointer',
+                    background: !input.trim() || sending ? '#e2e8f0' : NAVY,
+                    color: !input.trim() || sending ? '#94a3b8' : '#fff',
+                    fontWeight: 700, cursor: !input.trim() || sending ? 'not-allowed' : 'pointer',
                   }}
                 >
                   Send →

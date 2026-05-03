@@ -390,12 +390,9 @@ def intake_message(body: MessageIn, current_user=Depends(require_admin), db: Ses
 
     ready = "[READY_TO_GENERATE]" in ai_reply
     if ready:
-        session.completed = True
+        # Extract property requirements from conversation (no contact info yet)
         try:
             data = extract_client_data(messages)
-            session.client_name = data.get("client_name")
-            session.client_phone = data.get("client_phone")
-            session.client_email = data.get("client_email")
             session.budget_aed = data.get("budget_aed")
             session.property_type = data.get("property_type")
             session.bedrooms = data.get("bedrooms")
@@ -404,9 +401,10 @@ def intake_message(body: MessageIn, current_user=Depends(require_admin), db: Ses
             session.purchase_purpose = data.get("purchase_purpose")
         except Exception:
             pass
+        # Do NOT mark completed=True yet — that happens after contact form is submitted
 
     db.commit()
-    return {"message": ai_reply.replace("[READY_TO_GENERATE]", "").strip(), "completed": ready}
+    return {"message": ai_reply.replace("[READY_TO_GENERATE]", "").strip(), "ready": ready}
 
 
 @router.get("/intake/sessions")
@@ -424,6 +422,31 @@ def intake_sessions(current_user=Depends(require_admin), db: Session = Depends(g
         }
         for s in sessions
     ]
+
+
+class CompleteIn(BaseModel):
+    client_name: str
+    client_phone: Optional[str] = None
+    client_email: Optional[str] = None
+
+
+@router.post("/intake/{session_id}/complete")
+def intake_complete(
+    session_id: str,
+    body: CompleteIn,
+    current_user=Depends(require_admin),
+    db: Session = Depends(get_db),
+):
+    session = db.query(ClientIntake).filter(ClientIntake.session_id == session_id).first()
+    if not session:
+        raise HTTPException(404, "Session not found")
+    session.client_name = body.client_name.strip()
+    session.client_phone = body.client_phone
+    session.client_email = body.client_email
+    session.completed = True
+    session.updated_at = datetime.utcnow()
+    db.commit()
+    return {"message": "Session completed"}
 
 
 @router.post("/intake/{session_id}/report")

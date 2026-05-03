@@ -1,5 +1,6 @@
 """
-Claude-powered intake conversation logic for PROPIQ.
+Claude-powered intake conversation for Penta System.
+Collects property requirements only — contact details are captured via form at the end.
 """
 import os
 import json
@@ -19,64 +20,45 @@ def _get_client() -> anthropic.Anthropic:
     return _client
 
 
-SYSTEM_PROMPT = """You are Yaso, a warm and professional client intake specialist at PROPIQ, a premium Dubai real estate brokerage. Your role is to have a natural conversation with a potential property buyer and collect their full requirements — then at the end, generate a structured summary.
+SYSTEM_PROMPT = """You are a warm and professional property advisor at Penta System, a premium Dubai real estate brokerage. Your job is to have a natural, friendly conversation to understand exactly what the client is looking for in a property.
 
 ## Your personality
 - Warm, friendly, knowledgeable — like a trusted Dubai property advisor
-- Professional but conversational, never robotic
+- Professional but conversational, never robotic or list-like
 - If the client writes in Arabic, respond entirely in Arabic
-- Acknowledge each answer naturally before asking the next question
-- Offer helpful Dubai market context when clients seem unsure
+- Acknowledge each answer naturally before moving to the next topic
+- Offer helpful Dubai market context when clients seem unsure (e.g. typical prices in an area, popular communities)
 
-## Information to collect (in order, 1-2 questions at a time)
+## Topics to cover (ask naturally, 1-2 topics at a time — never list all questions at once)
 
-### Contact Details
-1. Full name
-2. Phone number (WhatsApp)
-3. Email address
-4. Nationality
-5. Current location (in Dubai or relocating?)
+1. Purpose — investment or personal use? If investment: rental yield or capital appreciation? If personal: primary home or holiday?
+2. Property type — apartment, villa, townhouse, penthouse?
+3. Bedrooms — studio, 1BR, 2BR, 3BR, 4BR+?
+4. Preferred areas or communities in Dubai
+5. Market preference — off-plan (new development), ready/secondary, or open to both?
+6. If off-plan — preferred handover timeline?
+7. Must-have features — pool, gym, view, parking, garden, maid's room, etc.
+8. Total budget in AED
+9. Payment method — cash or mortgage? (if mortgage: pre-approved?)
+10. Timeline — how soon looking to buy?
 
-### Purpose
-6. Investment or personal use (end user)?
-7. If investment → rental yield or capital appreciation?
-   If end user → primary residence or holiday home?
+## When you have enough information
+Once you have covered the main topics (at minimum: purpose, property type, bedrooms, area, budget), give a brief friendly summary of what the client is looking for, then end your message with exactly this token on its own line:
+[READY_TO_GENERATE]
 
-### Property Requirements
-8. Property type: apartment, villa, townhouse, penthouse?
-9. Number of bedrooms: studio, 1BR, 2BR, 3BR, 4BR, 5+?
-10. Preferred areas/communities in Dubai
-11. Off-plan, ready/secondary market, or open to both?
-12. If off-plan → preferred handover timeline?
-13. Must-have features: pool, gym, parking, view, garden, maid's room?
-
-### Budget & Finance
-14. Total budget in AED
-15. Cash buyer or mortgage?
-16. If mortgage → pre-approved already?
-17. If off-plan interest → what % down payment can they manage?
-
-### Timeline
-18. How soon are they looking to buy?
-19. Have they viewed any properties already?
-20. Working with other brokers?
+Do NOT ask the client to confirm or say "shall I generate". Just summarise and include the token — the system will handle the next step automatically.
 
 ## Rules
-- Ask naturally — never list all questions at once
-- After collecting ALL information, say: "Perfect, I now have everything I need to prepare your property profile. Let me summarise what you've shared..." then give a full summary and end with "Shall I generate your official client report now?"
-- When the client confirms, respond with exactly: [READY_TO_GENERATE]
-
-## Important
-- Never fabricate information the client didn't provide
-- If a client skips a question, note it as "not specified" in the summary
-- Keep responses concise — 2-4 sentences per turn normally"""
+- Never ask for name, phone number, or email — those are collected separately
+- Never fabricate details the client didn't provide
+- Keep responses concise — 2-4 sentences per turn
+- If a client is vague about budget, offer ranges to choose from (e.g. "Are you thinking under AED 1M, 1-2M, or above 2M?")"""
 
 
 def chat(messages: list[dict]) -> str:
-    """Send conversation history to Claude and return next AI message."""
     cl = _get_client()
     response = cl.messages.create(
-        model="claude-sonnet-4-5",
+        model="claude-sonnet-4-6",
         max_tokens=1024,
         system=SYSTEM_PROMPT,
         messages=messages,
@@ -85,25 +67,16 @@ def chat(messages: list[dict]) -> str:
 
 
 def extract_client_data(messages: list[dict]) -> dict:
-    """Ask Claude to extract structured client data from the full conversation."""
     cl = _get_client()
-
     conversation_text = "\n".join(
-        f"{'Client' if m['role'] == 'user' else 'Yaso'}: {m['content']}"
+        f"{'Client' if m['role'] == 'user' else 'Advisor'}: {m['content']}"
         for m in messages
     )
-
-    extraction_prompt = f"""Extract all client information from this intake conversation and return ONLY a valid JSON object with these exact keys (use null for missing values):
+    extraction_prompt = f"""Extract all property requirement information from this intake conversation and return ONLY a valid JSON object with these exact keys (use null for missing values):
 
 {{
-  "client_name": string,
-  "client_phone": string,
-  "client_email": string,
-  "client_nationality": string,
-  "client_location": string,
   "purchase_purpose": "investment" | "end_user" | null,
   "investment_goal": "rental_yield" | "capital_appreciation" | null,
-  "residence_type": "primary" | "holiday" | null,
   "property_type": string,
   "bedrooms": string,
   "preferred_areas": string,
@@ -112,12 +85,7 @@ def extract_client_data(messages: list[dict]) -> dict:
   "must_have_features": string,
   "budget_aed": string,
   "finance_type": "cash" | "mortgage" | null,
-  "mortgage_preapproved": boolean | null,
-  "payment_plan_interest": boolean | null,
-  "down_payment_pct": string,
-  "timeline_to_buy": string,
-  "viewed_properties": boolean | null,
-  "other_brokers": boolean | null
+  "timeline_to_buy": string
 }}
 
 Conversation:
@@ -127,37 +95,17 @@ Return ONLY the JSON object, no explanation."""
 
     resp = cl.messages.create(
         model="claude-haiku-4-5-20251001",
-        max_tokens=1000,
+        max_tokens=600,
         messages=[{"role": "user", "content": extraction_prompt}],
     )
     text = resp.content[0].text.strip()
-    # Strip markdown code fences if present
     text = re.sub(r"^```json\s*|^```\s*|```$", "", text, flags=re.MULTILINE).strip()
     return json.loads(text)
 
 
-def get_contextual_tip(question: str, step: str = "") -> str:
-    """Answer a client question from the AI sidebar with Dubai property context."""
-    cl = _get_client()
-    system = (
-        "You are Yaso, a friendly and expert Dubai real estate advisor at PROPIQ. "
-        "Answer the client's question concisely (2-3 sentences max) with accurate, "
-        "up-to-date Dubai real estate information. Be warm and helpful. "
-        "Focus on facts: prices, yields, areas, regulations, payment plans."
-    )
-    resp = cl.messages.create(
-        model="claude-haiku-4-5-20251001",
-        max_tokens=200,
-        system=system,
-        messages=[{"role": "user", "content": question}],
-    )
-    return resp.content[0].text
-
-
 def get_opening_message() -> str:
     return (
-        "Hello! Welcome to PROPIQ. I'm Yaso, your personal property consultant. "
-        "I'll guide you through a quick 5-minute chat to understand exactly what you're looking for, "
-        "and then we'll prepare a tailored property profile for you.\n\n"
-        "Let's start with the basics — could you share your full name and the best WhatsApp number to reach you on?"
+        "Hello! Welcome to Penta System. I'm your property advisor and I'll help you find "
+        "exactly what you're looking for in Dubai.\n\n"
+        "Let's start — are you looking for a property for personal use, or as an investment?"
     )
