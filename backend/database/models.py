@@ -353,6 +353,7 @@ class ClientIntake(Base):
     market_preference = Column(String(50))
     purchase_purpose = Column(String(50))
     messages_json = Column(Text, default="[]")
+    assigned_to = Column(Integer, nullable=True)
 
 
 class AgentPropertyPick(Base):
