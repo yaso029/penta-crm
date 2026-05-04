@@ -74,6 +74,7 @@ def list_sessions(current_user=Depends(get_current_user), db: Session = Depends(
             "features":             raw.get("features", []),
             "timeline":             raw.get("timeline", ""),
             "additional_notes":     raw.get("additionalNotes", ""),
+            "form_language":        raw.get("language", "en"),
             # Assignment
             "assigned_to":      s.assigned_to,
             "assigned_to_name": assigned_user.full_name if assigned_user else None,

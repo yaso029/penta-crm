@@ -64,11 +64,14 @@ const TIMELINE_LABELS = { immediate: 'Immediately', '3months': 'Within 3 months'
 function ClientBrief({ session, agents, onAssign }) {
   const { user } = useAuth();
 
+  const langLabel = session.form_language === 'ar' ? '🇦🇪 Arabic' : '🇬🇧 English';
+
   const rows = [
     ['Phone',           session.client_phone],
     ['Email',           session.client_email],
     ['Nationality',     session.nationality],
     ['Based in Dubai',  session.in_dubai === true ? 'Yes' : session.in_dubai === false ? 'No' : null],
+    ['Language',        langLabel],
     ['Budget',          session.budget_aed],
     ['Property Type',   session.property_type],
     ['Bedrooms',        session.bedrooms],
