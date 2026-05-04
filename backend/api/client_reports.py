@@ -13,39 +13,100 @@ from sqlalchemy.orm import Session
 from typing import Optional
 
 from backend.database.db import get_db
-from backend.database.models import ClientIntake, AgentPropertyPick
+from backend.database.models import ClientIntake, AgentPropertyPick, User
 from backend.services.auth_service import get_current_user
 
 router = APIRouter(prefix="/api/client-reports", tags=["client-reports"])
+
+
+def _meta_raw(messages_json: str):
+    """Extract meta + raw_form stored by the public intake endpoint."""
+    try:
+        msgs = json.loads(messages_json or "[]")
+        meta = next((m.get("content", {}) for m in msgs if m.get("role") == "meta"), {})
+        return meta, meta.get("raw_form", {})
+    except Exception:
+        return {}, {}
 
 
 # ─── Sessions list ────────────────────────────────────────────────────────────
 
 @router.get("/sessions")
 def list_sessions(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
-    sessions = db.query(ClientIntake).order_by(ClientIntake.created_at.desc()).all()
+    q = db.query(ClientIntake).order_by(ClientIntake.created_at.desc())
+    # Agents see only sessions assigned to them; admins see all
+    if current_user.role != "admin":
+        q = q.filter(ClientIntake.assigned_to == current_user.id)
+    sessions = q.all()
+
     result = []
     for s in sessions:
         picks_count = db.query(AgentPropertyPick).filter(
             AgentPropertyPick.session_id == s.session_id
         ).count()
+        meta, raw = _meta_raw(s.messages_json)
+        assigned_user = db.query(User).filter(User.id == s.assigned_to).first() if s.assigned_to else None
         result.append({
-            "id": s.id,
-            "session_id": s.session_id,
-            "completed": s.completed,
-            "client_name": s.client_name,
-            "client_phone": s.client_phone,
-            "client_email": s.client_email,
-            "budget_aed": s.budget_aed,
-            "property_type": s.property_type,
-            "bedrooms": s.bedrooms,
-            "preferred_areas": s.preferred_areas,
+            "id":               s.id,
+            "session_id":       s.session_id,
+            "completed":        s.completed,
+            "client_name":      s.client_name,
+            "client_phone":     s.client_phone,
+            "client_email":     s.client_email,
+            "budget_aed":       s.budget_aed,
+            "property_type":    s.property_type,
+            "bedrooms":         s.bedrooms,
+            "preferred_areas":  s.preferred_areas,
             "market_preference": s.market_preference,
             "purchase_purpose": s.purchase_purpose,
-            "picks_count": picks_count,
-            "created_at": s.created_at.isoformat() if s.created_at else None,
+            "picks_count":      picks_count,
+            "created_at":       s.created_at.isoformat() if s.created_at else None,
+            # Extra fields from public intake form
+            "nationality":          raw.get("nationality", ""),
+            "in_dubai":             raw.get("inDubai"),
+            "payment_method":       raw.get("paymentMethod", ""),
+            "employment_status":    raw.get("employmentStatus", ""),
+            "monthly_income":       raw.get("monthlyIncome", ""),
+            "monthly_liabilities":  raw.get("monthlyLiabilities", ""),
+            "mortgage_preapproved": raw.get("mortgagePreapproved"),
+            "preapproval_amount":   raw.get("preapprovalAmount", ""),
+            "down_payment_pct":     raw.get("downPaymentPct", ""),
+            "features":             raw.get("features", []),
+            "timeline":             raw.get("timeline", ""),
+            "additional_notes":     raw.get("additionalNotes", ""),
+            # Assignment
+            "assigned_to":      s.assigned_to,
+            "assigned_to_name": assigned_user.full_name if assigned_user else None,
         })
     return result
+
+
+# ─── Assign session to agent (admin only) ─────────────────────────────────────
+
+class AssignBody(BaseModel):
+    agent_id: Optional[int] = None   # None = unassign
+
+
+@router.put("/sessions/{session_id}/assign")
+def assign_session(session_id: str, body: AssignBody, current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.role != "admin":
+        raise HTTPException(403, "Admin only")
+    s = db.query(ClientIntake).filter(ClientIntake.session_id == session_id).first()
+    if not s:
+        raise HTTPException(404, "Session not found")
+    s.assigned_to = body.agent_id
+    db.commit()
+    return {"ok": True}
+
+
+# ─── List agents (for assignment dropdown) ────────────────────────────────────
+
+@router.get("/agents")
+def list_agents(current_user=Depends(get_current_user), db: Session = Depends(get_db)):
+    if current_user.role != "admin":
+        raise HTTPException(403, "Admin only")
+    agents = db.query(User).filter(User.is_active == True).all()
+    return [{"id": a.id, "name": a.full_name, "role": a.role} for a in agents]
 
 
 # ─── Fetch link metadata ──────────────────────────────────────────────────────

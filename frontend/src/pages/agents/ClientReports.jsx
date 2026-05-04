@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import api from '../../api';
+import { useAuth } from '../../AuthContext';
 
 const GOLD = '#C9A84C';
 const NAVY = '#0A2342';
@@ -54,18 +55,41 @@ function SessionRow({ s, selected, onSelect }) {
   );
 }
 
+const PAYMENT_LABELS = { cash: 'Cash Buyer', mortgage: 'Mortgage', payment_plan: 'Developer Payment Plan', unsure: 'Not Sure Yet' };
+const MARKET_LABELS  = { offplan: 'Off-Plan', ready: 'Ready / Secondary', both: 'Open to Both' };
+const TIMELINE_LABELS = { immediate: 'Immediately', '3months': 'Within 3 months', '6months': 'Within 6 months', '1year': 'Within 1 year', exploring: 'Just exploring' };
+
 // ─── Client brief card ─────────────────────────────────────────────────────
 
-function ClientBrief({ session }) {
+function ClientBrief({ session, agents, onAssign }) {
+  const { user } = useAuth();
+
   const rows = [
-    ['Phone', session.client_phone],
-    ['Email', session.client_email],
-    ['Budget', session.budget_aed],
-    ['Property Type', session.property_type],
-    ['Bedrooms', session.bedrooms],
-    ['Areas', session.preferred_areas],
-    ['Market', session.market_preference],
-    ['Purpose', session.purchase_purpose],
+    ['Phone',           session.client_phone],
+    ['Email',           session.client_email],
+    ['Nationality',     session.nationality],
+    ['Based in Dubai',  session.in_dubai === true ? 'Yes' : session.in_dubai === false ? 'No' : null],
+    ['Budget',          session.budget_aed],
+    ['Property Type',   session.property_type],
+    ['Bedrooms',        session.bedrooms],
+    ['Areas',           session.preferred_areas],
+    ['Market',          MARKET_LABELS[session.market_preference] || session.market_preference],
+    ['Purpose',         session.purchase_purpose],
+    ['Timeline',        TIMELINE_LABELS[session.timeline] || session.timeline],
+    ['Payment',         PAYMENT_LABELS[session.payment_method] || session.payment_method],
+    ...(session.payment_method === 'mortgage' ? [
+      ['Employment',      session.employment_status],
+      ['Monthly Income',  session.monthly_income ? `AED ${session.monthly_income}` : null],
+      ['Liabilities',     session.monthly_liabilities ? `AED ${session.monthly_liabilities}` : null],
+      ['Pre-approved',    session.mortgage_preapproved === true ? 'Yes' : session.mortgage_preapproved === false ? 'No' : null],
+      ['Pre-approval Amt',session.preapproval_amount],
+    ] : []),
+    ...(session.payment_method === 'payment_plan' ? [
+      ['Down Payment',    session.down_payment_pct],
+    ] : []),
+    ['Features',        Array.isArray(session.features) && session.features.length ? session.features.join(', ') : null],
+    ['Notes',           session.additional_notes],
+    ['Assigned To',     session.assigned_to_name || (session.assigned_to ? `Agent #${session.assigned_to}` : 'Unassigned')],
   ].filter(([, v]) => v);
 
   return (
@@ -82,11 +106,24 @@ function ClientBrief({ session }) {
       <div style={{ padding: '10px 16px' }}>
         {rows.map(([label, val]) => (
           <div key={label} style={{ display: 'flex', gap: 8, padding: '5px 0', borderBottom: '1px solid #f8fafc' }}>
-            <span style={{ fontSize: 11, color: '#aaa', width: 100, flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5, paddingTop: 1 }}>{label}</span>
+            <span style={{ fontSize: 11, color: '#aaa', width: 110, flexShrink: 0, textTransform: 'uppercase', letterSpacing: 0.5, paddingTop: 1 }}>{label}</span>
             <span style={{ fontSize: 13, color: '#0d1f3c', fontWeight: 600 }}>{val}</span>
           </div>
         ))}
       </div>
+      {user?.role === 'admin' && onAssign && (
+        <div style={{ padding: '10px 16px', borderTop: '1px solid #f1f5f9', display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ fontSize: 11, color: '#aaa', textTransform: 'uppercase', letterSpacing: 0.5 }}>Assign to</span>
+          <select
+            value={session.assigned_to || ''}
+            onChange={e => onAssign(session.session_id, e.target.value ? Number(e.target.value) : null)}
+            style={{ flex: 1, padding: '6px 10px', borderRadius: 7, border: '1px solid #e2e8f0', fontSize: 13, color: NAVY, background: '#fff' }}
+          >
+            <option value="">— Unassigned —</option>
+            {agents.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
+          </select>
+        </div>
+      )}
     </div>
   );
 }
@@ -501,23 +538,34 @@ function PickCard({ pick, index, onSave, onDelete, onRefetch }) {
 // ─── Main component ────────────────────────────────────────────────────────
 
 export default function ClientReports() {
+  const { user } = useAuth();
   const [sessions, setSessions] = useState([]);
   const [selected, setSelected] = useState(null);
   const [picks, setPicks] = useState([]);
   const [loadingSessions, setLoadingSessions] = useState(true);
   const [generating, setGenerating] = useState(false);
   const [search, setSearch] = useState('');
+  const [agents, setAgents] = useState([]);
 
   const fetchSessions = () => {
     setLoadingSessions(true);
     api.get('/api/client-reports/sessions').then(r => setSessions(r.data)).finally(() => setLoadingSessions(false));
   };
 
+  const handleAssign = async (sessionId, agentId) => {
+    await api.put(`/api/client-reports/sessions/${sessionId}/assign`, { agent_id: agentId });
+    fetchSessions();
+    setSelected(prev => prev?.session_id === sessionId ? { ...prev, assigned_to: agentId, assigned_to_name: agents.find(a => a.id === agentId)?.name || null } : prev);
+  };
+
   const fetchPicks = (sessionId) => {
     api.get(`/api/client-reports/sessions/${sessionId}/picks`).then(r => setPicks(r.data));
   };
 
-  useEffect(() => { fetchSessions(); }, []);
+  useEffect(() => {
+    fetchSessions();
+    if (user?.role === 'admin') api.get('/api/client-reports/agents').then(r => setAgents(r.data)).catch(() => {});
+  }, []);
 
   const selectSession = (s) => {
     setSelected(s);
@@ -654,7 +702,7 @@ export default function ClientReports() {
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto' }}>
-            <ClientBrief session={selected} />
+            <ClientBrief session={selected} agents={agents} onAssign={handleAssign} />
             <FetchBar onFetched={handleFetched} onAddManually={handleAddManually} />
 
             {picks.length === 0 ? (

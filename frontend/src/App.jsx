@@ -60,6 +60,7 @@ export default function App() {
         <Route path="kanban" element={<KanbanPage />} />
         <Route path="leads" element={<LeadsPage />} />
         <Route path="leads/:id" element={<LeadDetailPage />} />
+        <Route path="client-reports" element={<ClientReports />} />
         <Route path="users" element={
           <PrivateRoute roles={['admin']}>
             <UsersPage />

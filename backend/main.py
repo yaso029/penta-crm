@@ -93,11 +93,21 @@ def _run_migrations():
         ("highlights",       "TEXT"),
         ("images_json",      "TEXT"),
     ]
+    intake_cols = [
+        ("assigned_to", "INTEGER"),
+    ]
     with engine.connect() as conn:
         for col, coltype in new_cols:
             try:
                 conn.execute(text(
                     f"ALTER TABLE agent_property_picks ADD COLUMN IF NOT EXISTS {col} {coltype}"
+                ))
+            except Exception:
+                pass
+        for col, coltype in intake_cols:
+            try:
+                conn.execute(text(
+                    f"ALTER TABLE client_intakes ADD COLUMN IF NOT EXISTS {col} {coltype}"
                 ))
             except Exception:
                 pass

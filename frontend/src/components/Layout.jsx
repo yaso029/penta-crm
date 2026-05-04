@@ -73,6 +73,7 @@ export default function Layout() {
     { to: '/crm', label: 'Dashboard', icon: '▦', exact: true },
     { to: '/crm/kanban', label: 'Pipeline', icon: '◫' },
     { to: '/crm/leads', label: 'Leads', icon: '☰' },
+    { to: '/crm/client-reports', label: 'Client Reports', icon: '📋' },
     ...(user?.role === 'admin' ? [
       { to: '/crm/customers', label: 'Customers', icon: '👥' },
       { to: '/crm/users', label: 'Users', icon: '◎' },
