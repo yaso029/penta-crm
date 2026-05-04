@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
-const API = import.meta.env.VITE_API_URL || 'https://dubai-realestate-production.up.railway.app';
+const API = import.meta.env.VITE_API_URL || 'http://localhost:8001';
 import { NAVY, GOLD } from './intake/ui';
 import WelcomeStep from './intake/WelcomeStep';
 import ContactStep from './intake/ContactStep';
