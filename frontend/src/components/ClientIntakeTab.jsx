@@ -45,6 +45,7 @@ export default function ClientIntakeTab() {
     } catch { return INITIAL_DATA; }
   });
   const [generating, setGenerating] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [genError, setGenError] = useState(null);
 
   useEffect(() => {
@@ -66,26 +67,9 @@ export default function ClientIntakeTab() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ form_data: data }),
       });
-      if (!saveRes.ok) throw new Error('Failed to save form data');
-      const { session_id } = await saveRes.json();
-
-      const pdfRes = await fetch(`${API}/intake/form/generate-report`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id }),
-      });
-      if (!pdfRes.ok) throw new Error('PDF generation failed');
-
-      const blob = await pdfRes.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      const name = data.fullName.replace(/\s+/g, '_') || 'Client';
-      const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
-      a.href = url;
-      a.download = `PROPIQ_Intake_${name}_${date}.pdf`;
-      a.click();
-      URL.revokeObjectURL(url);
+      if (!saveRes.ok) throw new Error('Submission failed — please try again');
       localStorage.removeItem('propiq-intake-v3');
+      setSubmitted(true);
     } catch (e) {
       setGenError(e.message);
     } finally {
@@ -106,6 +90,26 @@ export default function ClientIntakeTab() {
           language={data.language}
           onLanguage={lang => update({ language: lang })}
         />
+      </div>
+    );
+  }
+
+  if (submitted) {
+    return (
+      <div style={{
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        minHeight: '60vh', textAlign: 'center', padding: '60px 24px',
+      }}>
+        <div>
+          <div style={{ fontSize: 64, marginBottom: 24 }}>✓</div>
+          <h2 style={{ fontSize: 28, fontWeight: 800, color: NAVY, margin: '0 0 12px' }}>
+            Thank You, {data.fullName || 'there'}!
+          </h2>
+          <p style={{ fontSize: 16, color: '#6B7280', maxWidth: 420, margin: '0 auto', lineHeight: 1.6 }}>
+            Your requirements have been received. One of our advisors will review your profile and get in touch with you shortly.
+          </p>
+        </div>
       </div>
     );
   }

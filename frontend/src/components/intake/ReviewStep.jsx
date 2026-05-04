@@ -1,5 +1,3 @@
-import { useState } from 'react';
-const API = import.meta.env.VITE_API_URL || 'https://dubai-realestate-production.up.railway.app';
 import { NAVY, GOLD, BORDER, formatBudget } from './ui';
 
 const TIMELINE_LABELS = {
@@ -10,34 +8,11 @@ const TIMELINE_LABELS = {
   exploring: 'Just exploring',
 };
 
-const PURPOSE_LABELS = {
-  investment: 'Investment',
-  end_user: 'Personal Use',
-};
-
-const GOAL_LABELS = {
-  rental_yield: 'Rental Yield',
-  capital: 'Capital Appreciation',
-  both: 'Rental Yield + Capital Appreciation',
-};
-
-const RESIDENCE_LABELS = {
-  primary: 'Primary Residence',
-  holiday: 'Holiday Home',
-};
-
-const MARKET_LABELS = {
-  offplan: 'Off-Plan (New Launch)',
-  ready: 'Ready / Secondary',
-  both: 'Open to Both',
-};
-
-const PAYMENT_LABELS = {
-  cash: 'Cash Buyer',
-  mortgage: 'Mortgage (Bank Financed)',
-  payment_plan: 'Developer Payment Plan',
-  unsure: 'Not Sure Yet',
-};
+const PURPOSE_LABELS   = { investment: 'Investment', end_user: 'Personal Use' };
+const GOAL_LABELS      = { rental_yield: 'Rental Yield', capital: 'Capital Appreciation', both: 'Rental Yield + Capital Appreciation' };
+const RESIDENCE_LABELS = { primary: 'Primary Residence', holiday: 'Holiday Home' };
+const MARKET_LABELS    = { offplan: 'Off-Plan (New Launch)', ready: 'Ready / Secondary', both: 'Open to Both' };
+const PAYMENT_LABELS   = { cash: 'Cash Buyer', mortgage: 'Mortgage (Bank Financed)', payment_plan: 'Developer Payment Plan', unsure: 'Not Sure Yet' };
 
 function Section({ title, step, onEdit, children }) {
   return (
@@ -54,9 +29,7 @@ function Section({ title, step, onEdit, children }) {
           background: 'none', border: `1px solid ${BORDER}`, borderRadius: 6,
           padding: '4px 12px', fontSize: 12, fontWeight: 600, color: '#6B7280',
           cursor: 'pointer', fontFamily: 'inherit',
-        }}>
-          Edit
-        </button>
+        }}>Edit</button>
       </div>
       <div style={{ padding: '16px 20px' }}>{children}</div>
     </div>
@@ -74,40 +47,6 @@ function Row({ label, value }) {
 }
 
 export default function ReviewStep({ data, onGoTo, onGenerate, generating }) {
-  const [emailTo, setEmailTo] = useState('agentyassinammary@gmail.com');
-  const [sending, setSending] = useState(false);
-  const [emailStatus, setEmailStatus] = useState(null); // null | 'ok' | 'error'
-  const [lastSessionId, setLastSessionId] = useState(null);
-
-  async function handleGenerateAndEmail() {
-    setSending(true);
-    setEmailStatus(null);
-    try {
-      // Save form first
-      const saveRes = await fetch(`${API}/intake/form/save`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ form_data: data }),
-      });
-      if (!saveRes.ok) throw new Error('Save failed');
-      const { session_id } = await saveRes.json();
-      setLastSessionId(session_id);
-
-      const res = await fetch(`${API}/intake/form/send-email`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ session_id, recipient_email: emailTo }),
-      });
-      const result = await res.json();
-      if (!res.ok) throw new Error(result.detail || 'Failed');
-      setEmailStatus('ok');
-    } catch (e) {
-      setEmailStatus('error:' + e.message);
-    } finally {
-      setSending(false);
-    }
-  }
-
   return (
     <div style={{ maxWidth: 620, margin: '0 auto' }}>
       <div style={{ marginBottom: 32 }}>
@@ -115,7 +54,7 @@ export default function ReviewStep({ data, onGoTo, onGenerate, generating }) {
           Review Your Answers
         </h2>
         <p style={{ fontSize: 15, color: '#6B7280', margin: 0 }}>
-          Everything looks good? Click "Generate My Report" to create your personalised PDF.
+          Everything looks good? Submit and we'll be in touch shortly.
         </p>
       </div>
 
@@ -144,9 +83,7 @@ export default function ReviewStep({ data, onGoTo, onGenerate, generating }) {
             <Row label="Pre-approval Amount" value={data.preapprovalAmount} />
           </>
         )}
-        {data.paymentMethod === 'payment_plan' && (
-          <Row label="Down Payment" value={data.downPaymentPct} />
-        )}
+        {data.paymentMethod === 'payment_plan' && <Row label="Down Payment" value={data.downPaymentPct} />}
       </Section>
 
       {data.features.length > 0 && (
@@ -185,75 +122,21 @@ export default function ReviewStep({ data, onGoTo, onGenerate, generating }) {
         <Row label="Based in Dubai" value={data.inDubai === true ? 'Yes' : data.inDubai === false ? 'No' : null} />
       </Section>
 
-      {/* Download PDF */}
       <div style={{ marginTop: 40, textAlign: 'center' }}>
         <button
           onClick={onGenerate}
           disabled={generating}
           style={{
-            padding: '16px 48px',
+            padding: '16px 64px',
             background: generating ? '#D4B96A' : `linear-gradient(135deg, ${GOLD}, #E8C15A)`,
             color: NAVY, border: 'none', borderRadius: 14,
-            fontSize: 16, fontWeight: 800, cursor: generating ? 'not-allowed' : 'pointer',
+            fontSize: 18, fontWeight: 800, cursor: generating ? 'not-allowed' : 'pointer',
             boxShadow: generating ? 'none' : '0 4px 24px rgba(201,168,76,0.45)',
-            transition: 'all 0.15s', letterSpacing: '-0.2px', fontFamily: 'inherit',
+            transition: 'all 0.15s', fontFamily: 'inherit',
           }}
         >
-          {generating ? '⏳ Generating…' : '⬇ Download PDF Report'}
+          {generating ? 'Submitting…' : 'Submit'}
         </button>
-      </div>
-
-      {/* Send to email */}
-      <div style={{
-        marginTop: 20, border: `1.5px solid ${BORDER}`, borderRadius: 14,
-        padding: '20px 24px', background: '#F8FAFC',
-      }}>
-        <div style={{ fontSize: 14, fontWeight: 700, color: NAVY, marginBottom: 4 }}>
-          📧 Send report to email
-        </div>
-        <div style={{ fontSize: 12, color: '#6B7280', marginBottom: 14 }}>
-          The PDF will be generated and sent directly to your inbox.
-        </div>
-        <div style={{ display: 'flex', gap: 10 }}>
-          <input
-            value={emailTo}
-            onChange={e => { setEmailTo(e.target.value); setEmailStatus(null); }}
-            placeholder="broker@email.com"
-            type="email"
-            style={{
-              flex: 1, padding: '11px 14px',
-              border: `1.5px solid ${BORDER}`, borderRadius: 10,
-              fontSize: 14, color: NAVY, outline: 'none',
-              fontFamily: 'inherit', background: '#fff',
-            }}
-          />
-          <button
-            onClick={handleGenerateAndEmail}
-            disabled={sending || !emailTo.trim()}
-            style={{
-              padding: '11px 22px',
-              background: sending ? '#E5E7EB' : NAVY,
-              color: sending ? '#9CA3AF' : '#fff',
-              border: 'none', borderRadius: 10,
-              fontSize: 14, fontWeight: 700,
-              cursor: sending ? 'not-allowed' : 'pointer',
-              fontFamily: 'inherit', whiteSpace: 'nowrap',
-            }}
-          >
-            {sending ? 'Sending…' : 'Send →'}
-          </button>
-        </div>
-
-        {emailStatus === 'ok' && (
-          <div style={{ marginTop: 12, fontSize: 13, color: '#059669', fontWeight: 600 }}>
-            ✓ Report sent to {emailTo}
-          </div>
-        )}
-        {emailStatus && emailStatus.startsWith('error:') && (
-          <div style={{ marginTop: 12, fontSize: 13, color: '#DC2626' }}>
-            ✗ {emailStatus.replace('error:', '')} — check SMTP settings in .env
-          </div>
-        )}
       </div>
     </div>
   );
