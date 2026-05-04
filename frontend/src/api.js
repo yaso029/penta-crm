@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE = import.meta.env.VITE_API_URL || 'http://localhost:8001';
+const BASE = import.meta.env.VITE_API_URL || 'https://penta-crm-production.up.railway.app';
 
 const api = axios.create({ baseURL: BASE });
 
