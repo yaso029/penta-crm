@@ -1,15 +1,21 @@
 import { NAVY, GOLD, BORDER, BackBtn, NextBtn, StepTitle, YesNoToggle, FieldLabel, TextInput, Pill } from './ui';
 
 const METHODS = [
-  { value: 'cash', icon: '💵', label: 'Cash Buyer', description: 'Full payment upfront' },
-  { value: 'mortgage', icon: '🏦', label: 'Mortgage', description: 'Bank financed purchase' },
-  { value: 'payment_plan', icon: '📅', label: 'Developer Payment Plan', description: 'Off-plan installment plan' },
-  { value: 'unsure', icon: '🤔', label: 'Not Sure Yet', description: "I'd like to explore my options" },
+  { value: 'cash',         label: 'Cash Buyer',                description: 'Full payment upfront' },
+  { value: 'mortgage',     label: 'Mortgage',                  description: 'Bank financed purchase' },
+  { value: 'payment_plan', label: 'Developer Payment Plan',    description: 'Off-plan installment plan' },
+  { value: 'unsure',       label: 'Not Sure Yet',              description: "I'd like to explore my options" },
 ];
 
-const DOWN_PAYMENTS = ['10%', '20%', '30%', '40%', '50%+'];
+const DOWN_PAYMENTS    = ['10%', '20%', '30%', '40%', '50%+'];
+const EMPLOYMENT_TYPES = ['Employed', 'Self-Employed', 'Business Owner', 'Investor / Retired'];
 
 export default function PaymentStep({ data, update, onNext, onBack }) {
+  const mortgageReady =
+    data.paymentMethod === 'mortgage'
+      ? data.employmentStatus && data.monthlyIncome
+      : true;
+
   return (
     <div style={{ maxWidth: 580, margin: '0 auto' }}>
       <BackBtn onClick={onBack} />
@@ -29,7 +35,6 @@ export default function PaymentStep({ data, update, onNext, onBack }) {
               cursor: 'pointer', transition: 'all 0.15s',
               display: 'flex', alignItems: 'center', gap: 14, position: 'relative',
             }}>
-              <span style={{ fontSize: 24 }}>{m.icon}</span>
               <div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: sel ? '#fff' : NAVY }}>{m.label}</div>
                 <div style={{ fontSize: 12, color: sel ? '#CBD5E1' : '#6B7280' }}>{m.description}</div>
@@ -40,16 +45,45 @@ export default function PaymentStep({ data, update, onNext, onBack }) {
         })}
       </div>
 
-      {/* Mortgage conditional */}
+      {/* Mortgage — 3 key questions */}
       {data.paymentMethod === 'mortgage' && (
-        <div style={{ background: '#F8FAFC', borderRadius: 12, padding: 20, marginBottom: 20, animation: 'fadeUp 0.25s ease' }}>
-          <div style={{ marginBottom: 16 }}>
-            <FieldLabel>Are you pre-approved for a mortgage?</FieldLabel>
+        <div style={{ background: '#F8FAFC', borderRadius: 12, padding: 24, marginBottom: 20, animation: 'fadeUp 0.25s ease', display: 'flex', flexDirection: 'column', gap: 20 }}>
+
+          <div>
+            <FieldLabel>Employment status</FieldLabel>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10, marginTop: 8 }}>
+              {EMPLOYMENT_TYPES.map(e => (
+                <Pill key={e} label={e} selected={data.employmentStatus === e} onClick={() => update({ employmentStatus: e })} />
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <FieldLabel>Monthly salary / income (AED)</FieldLabel>
+            <TextInput
+              value={data.monthlyIncome}
+              onChange={v => update({ monthlyIncome: v })}
+              placeholder="e.g. 35,000"
+            />
+          </div>
+
+          <div>
+            <FieldLabel>Existing monthly liabilities (AED) — car loans, credit cards, other loans</FieldLabel>
+            <TextInput
+              value={data.monthlyLiabilities}
+              onChange={v => update({ monthlyLiabilities: v })}
+              placeholder="e.g. 5,000 — enter 0 if none"
+            />
+          </div>
+
+          <div>
+            <FieldLabel>Are you already pre-approved for a mortgage?</FieldLabel>
             <YesNoToggle value={data.mortgagePreapproved} onChange={v => update({ mortgagePreapproved: v })} />
           </div>
+
           {data.mortgagePreapproved && (
             <div>
-              <FieldLabel>Approximate pre-approval amount (AED)</FieldLabel>
+              <FieldLabel>Pre-approval amount (AED)</FieldLabel>
               <TextInput
                 value={data.preapprovalAmount}
                 onChange={v => update({ preapprovalAmount: v })}
@@ -60,7 +94,7 @@ export default function PaymentStep({ data, update, onNext, onBack }) {
         </div>
       )}
 
-      {/* Payment plan conditional */}
+      {/* Payment plan */}
       {data.paymentMethod === 'payment_plan' && (
         <div style={{ background: '#F8FAFC', borderRadius: 12, padding: 20, marginBottom: 20, animation: 'fadeUp 0.25s ease' }}>
           <FieldLabel>Down payment available</FieldLabel>
@@ -72,7 +106,7 @@ export default function PaymentStep({ data, update, onNext, onBack }) {
         </div>
       )}
 
-      <NextBtn onClick={onNext} disabled={!data.paymentMethod} />
+      <NextBtn onClick={onNext} disabled={!data.paymentMethod || !mortgageReady} />
       <style>{`@keyframes fadeUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </div>
   );

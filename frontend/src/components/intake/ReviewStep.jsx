@@ -79,8 +79,11 @@ export default function ReviewStep({ data, onGoTo, onGenerate, generating }) {
         <Row label="Payment" value={PAYMENT_LABELS[data.paymentMethod]} />
         {data.paymentMethod === 'mortgage' && (
           <>
-            <Row label="Pre-approved" value={data.mortgagePreapproved === true ? 'Yes' : data.mortgagePreapproved === false ? 'No' : null} />
-            <Row label="Pre-approval Amount" value={data.preapprovalAmount} />
+            <Row label="Employment Status"    value={data.employmentStatus} />
+            <Row label="Monthly Income"       value={data.monthlyIncome ? `AED ${data.monthlyIncome}` : null} />
+            <Row label="Monthly Liabilities"  value={data.monthlyLiabilities ? `AED ${data.monthlyLiabilities}` : null} />
+            <Row label="Pre-approved"         value={data.mortgagePreapproved === true ? 'Yes' : data.mortgagePreapproved === false ? 'No' : null} />
+            <Row label="Pre-approval Amount"  value={data.preapprovalAmount} />
           </>
         )}
         {data.paymentMethod === 'payment_plan' && <Row label="Down Payment" value={data.downPaymentPct} />}

@@ -25,6 +25,7 @@ const INITIAL_DATA = {
   marketPreference: null,
   budgetMin: 1_000_000, budgetMax: 5_000_000,
   paymentMethod: null, mortgagePreapproved: null, preapprovalAmount: '', downPaymentPct: null,
+  employmentStatus: null, monthlyIncome: '', monthlyLiabilities: '',
   features: [],
   timeline: null, viewedProperties: null, otherBrokers: null,
   additionalNotes: '',
@@ -117,11 +118,10 @@ export default function ClientIntakeTab() {
   return (
     <div style={{
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-      display: 'flex', height: 'calc(100vh - 175px)',
-      background: '#fff', borderRadius: 16, overflow: 'hidden',
-      border: '1px solid #E5E7EB',
+      display: 'flex', minHeight: '100vh',
+      background: '#fff',
     }}>
-      {/* Main form */}
+      {/* Main form — full screen, no sidebar */}
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         {/* Progress bar */}
@@ -183,8 +183,6 @@ export default function ClientIntakeTab() {
         </div>
       </div>
 
-      {/* AI Sidebar */}
-      <AISidebar step={step} stepName={STEP_NAMES[step]} data={data} />
 
       <style>{`
         @keyframes fadeSlide {
