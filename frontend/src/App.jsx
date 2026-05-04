@@ -32,6 +32,7 @@ import SecondaryListings from './pages/aimodel/SecondaryListings';
 import ClientMatcher from './pages/aimodel/ClientMatcher';
 import IntakeAI from './pages/aimodel/IntakeAI';
 import ScrapeControl from './pages/aimodel/ScrapeControl';
+import PublicIntakePage from './pages/PublicIntakePage';
 
 function PrivateRoute({ children, roles }) {
   const { user } = useAuth();
@@ -45,6 +46,9 @@ export default function App() {
 
   return (
     <Routes>
+      {/* Public — no auth required */}
+      <Route path="/intake" element={<PublicIntakePage />} />
+
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
 
       {/* Landing — module selector */}
