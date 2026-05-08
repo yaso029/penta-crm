@@ -1,21 +1,22 @@
 import { NAVY, GOLD, BORDER, BackBtn, NextBtn, StepTitle, FieldLabel, YesNoToggle } from './ui';
+import { T } from './translations';
 
-const TIMELINES = [
-  { value: 'immediate', label: '⚡ Immediately', sub: 'Within 1 month' },
-  { value: '3months', label: '📅 Within 3 Months', sub: 'Ready to move fast' },
-  { value: '6months', label: '🗓️ Within 6 Months', sub: 'Taking my time' },
-  { value: '1year', label: '📆 Within 1 Year', sub: 'Still researching' },
-  { value: 'exploring', label: '🔍 Just Exploring', sub: 'No fixed timeline yet' },
-];
+export default function TimelineStep({ data, update, onNext, onBack, language = 'en' }) {
+  const lang = T[language] || T.en;
+  const p = lang.timeline;
 
-export default function TimelineStep({ data, update, onNext, onBack }) {
+  const TIMELINES = [
+    { value: 'immediate', label: p.immediate, sub: p.immediateSub },
+    { value: '3months', label: p.threeMonths, sub: p.threeMonthsSub },
+    { value: '6months', label: p.sixMonths, sub: p.sixMonthsSub },
+    { value: '1year', label: p.oneYear, sub: p.oneYearSub },
+    { value: 'exploring', label: p.exploring, sub: p.exploringSub },
+  ];
+
   return (
     <div style={{ maxWidth: 560, margin: '0 auto' }}>
-      <BackBtn onClick={onBack} />
-      <StepTitle
-        title="When are you looking to buy?"
-        subtitle="This helps us prioritise the right options and developers for you."
-      />
+      <BackBtn onClick={onBack} label={lang.back} />
+      <StepTitle title={p.title} subtitle={p.subtitle} />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 32 }}>
         {TIMELINES.map(t => {
@@ -40,16 +41,16 @@ export default function TimelineStep({ data, update, onNext, onBack }) {
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
         <div>
-          <FieldLabel>Have you viewed properties already?</FieldLabel>
-          <YesNoToggle value={data.viewedProperties} onChange={v => update({ viewedProperties: v })} />
+          <FieldLabel>{p.viewedLabel}</FieldLabel>
+          <YesNoToggle value={data.viewedProperties} onChange={v => update({ viewedProperties: v })} yesLabel={lang.yes} noLabel={lang.no} />
         </div>
         <div>
-          <FieldLabel>Are you working with other brokers?</FieldLabel>
-          <YesNoToggle value={data.otherBrokers} onChange={v => update({ otherBrokers: v })} />
+          <FieldLabel>{p.brokersLabel}</FieldLabel>
+          <YesNoToggle value={data.otherBrokers} onChange={v => update({ otherBrokers: v })} yesLabel={lang.yes} noLabel={lang.no} />
         </div>
       </div>
 
-      <NextBtn onClick={onNext} disabled={!data.timeline} />
+      <NextBtn onClick={onNext} disabled={!data.timeline} label={lang.next} />
     </div>
   );
 }

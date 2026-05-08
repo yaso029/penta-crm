@@ -656,7 +656,19 @@ export default function ClientReports() {
       {/* ── Session list ── */}
       <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ marginBottom: 10 }}>
-          <div style={{ fontSize: 18, fontWeight: 800, color: '#0d1f3c', marginBottom: 10 }}>Client Reports</div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <div style={{ fontSize: 18, fontWeight: 800, color: '#0d1f3c' }}>Client Reports</div>
+            {/* Counter badge */}
+            <div style={{
+              display: 'flex', flexDirection: 'column', alignItems: 'center',
+              background: NAVY, borderRadius: 10, padding: '6px 14px', minWidth: 56,
+            }}>
+              <span style={{ fontSize: 22, fontWeight: 900, color: '#fff', lineHeight: 1 }}>{sessions.length}</span>
+              <span style={{ fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: 600, letterSpacing: '0.5px', textTransform: 'uppercase', marginTop: 2 }}>
+                {user?.role === 'admin' ? 'Total' : 'Assigned'}
+              </span>
+            </div>
+          </div>
           <input
             value={search}
             onChange={e => setSearch(e.target.value)}

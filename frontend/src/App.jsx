@@ -33,6 +33,9 @@ import ClientMatcher from './pages/aimodel/ClientMatcher';
 import IntakeAI from './pages/aimodel/IntakeAI';
 import ScrapeControl from './pages/aimodel/ScrapeControl';
 import PublicIntakePage from './pages/PublicIntakePage';
+import PublicReferralPage from './pages/PublicReferralPage';
+import ReferralPartners from './pages/agents/ReferralPartners';
+import ReferralApplications from './pages/partnerships/ReferralApplications';
 
 function PrivateRoute({ children, roles }) {
   const { user } = useAuth();
@@ -48,6 +51,7 @@ export default function App() {
     <Routes>
       {/* Public — no auth required */}
       <Route path="/intake" element={<PublicIntakePage />} />
+      <Route path="/referral" element={<PublicReferralPage />} />
 
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
 
@@ -80,6 +84,7 @@ export default function App() {
         </PrivateRoute>
       }>
         <Route index element={<PartnershipsDashboard />} />
+        <Route path="referral-applications" element={<ReferralApplications />} />
         <Route path="partners" element={<Partners />} />
         <Route path="outreach" element={<Outreach />} />
         <Route path="templates" element={<Templates />} />
@@ -97,6 +102,7 @@ export default function App() {
         <Route path="videos" element={<Videos />} />
         <Route path="promotions" element={<Promotions />} />
         <Route path="client-reports" element={<ClientReports />} />
+        <Route path="referral-partners" element={<ReferralPartners />} />
       </Route>
 
       {/* AI Model module — admin only */}

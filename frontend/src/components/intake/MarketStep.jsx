@@ -1,34 +1,20 @@
 import { NAVY, GOLD, BORDER, BackBtn, NextBtn, StepTitle } from './ui';
+import { T } from './translations';
 
-const OPTIONS = [
-  {
-    value: 'offplan',
-    icon: '🏗️',
-    label: 'Off-Plan',
-    description: 'Buy direct from developer. Flexible payment plans. Lower entry price.',
-  },
-  {
-    value: 'ready',
-    icon: '🏠',
-    label: 'Ready / Secondary',
-    description: 'Move in immediately. Established communities. Full transparency.',
-  },
-  {
-    value: 'both',
-    icon: '🔍',
-    label: 'Open to Both',
-    description: 'Show me all options — I want to compare and decide.',
-  },
-];
+export default function MarketStep({ data, update, onNext, onBack, language = 'en' }) {
+  const lang = T[language] || T.en;
+  const p = lang.market;
 
-export default function MarketStep({ data, update, onNext, onBack }) {
+  const OPTIONS = [
+    { value: 'offplan', icon: '🏗️', label: p.offplan, description: p.offplanDesc },
+    { value: 'ready', icon: '🏠', label: p.ready, description: p.readyDesc },
+    { value: 'both', icon: '🔍', label: p.both, description: p.bothDesc },
+  ];
+
   return (
     <div style={{ maxWidth: 580, margin: '0 auto' }}>
-      <BackBtn onClick={onBack} />
-      <StepTitle
-        title="Off-plan or ready market?"
-        subtitle="This determines which listings and developers we'll show you."
-      />
+      <BackBtn onClick={onBack} label={lang.back} />
+      <StepTitle title={p.title} subtitle={p.subtitle} />
 
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
         {OPTIONS.map(opt => {
@@ -59,7 +45,7 @@ export default function MarketStep({ data, update, onNext, onBack }) {
         })}
       </div>
 
-      <NextBtn onClick={onNext} disabled={!data.marketPreference} />
+      <NextBtn onClick={onNext} disabled={!data.marketPreference} label={lang.next} />
     </div>
   );
 }

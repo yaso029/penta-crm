@@ -15,7 +15,7 @@ export function formatBudget(val) {
   return `AED ${val.toLocaleString()}`;
 }
 
-export function BackBtn({ onClick }) {
+export function BackBtn({ onClick, label = '← Back' }) {
   return (
     <button onClick={onClick} style={{
       background: 'none', border: 'none', color: '#6B7280',
@@ -23,7 +23,7 @@ export function BackBtn({ onClick }) {
       display: 'flex', alignItems: 'center', gap: 6,
       padding: 0, fontWeight: 500, fontFamily: 'inherit',
     }}>
-      ← Back
+      {label}
     </button>
   );
 }
@@ -93,20 +93,21 @@ export function Pill({ label, selected, onClick }) {
   );
 }
 
-export function YesNoToggle({ value, onChange }) {
+export function YesNoToggle({ value, onChange, yesLabel = 'Yes', noLabel = 'No' }) {
+  const opts = [{ label: yesLabel, val: true }, { label: noLabel, val: false }];
   return (
     <div style={{ display: 'flex', gap: 12 }}>
-      {['Yes', 'No'].map(opt => (
-        <button key={opt} onClick={() => onChange(opt === 'Yes')} style={{
+      {opts.map(opt => (
+        <button key={opt.label} onClick={() => onChange(opt.val)} style={{
           padding: '10px 32px',
-          border: `2px solid ${value === (opt === 'Yes') ? '#000' : BORDER}`,
+          border: `2px solid ${value === opt.val ? '#000' : BORDER}`,
           borderRadius: 10,
-          background: value === (opt === 'Yes') ? '#000' : '#fff',
-          color: value === (opt === 'Yes') ? '#fff' : NAVY,
+          background: value === opt.val ? '#000' : '#fff',
+          color: value === opt.val ? '#fff' : NAVY,
           fontSize: 14, fontWeight: 600, cursor: 'pointer',
           transition: 'all 0.15s', fontFamily: 'inherit',
         }}>
-          {opt}
+          {opt.label}
         </button>
       ))}
     </div>

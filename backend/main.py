@@ -14,6 +14,8 @@ from backend.api import agents_dashboard
 from backend.api import ai_routes
 from backend.api import client_reports
 from backend.api import public_intake
+from backend.api import public_referral
+from backend.api import referral_applications
 import os
 
 app = FastAPI(title="Penta CRM API", version="2.0.0")
@@ -54,6 +56,10 @@ app.include_router(client_reports.router)
 
 # Public intake — no auth (client-facing form)
 app.include_router(public_intake.router)
+
+# Referral applications — public form + authenticated management
+app.include_router(public_referral.router)
+app.include_router(referral_applications.router)
 
 
 def seed_admin():

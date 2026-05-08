@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 const API = import.meta.env.VITE_API_URL || 'https://penta-crm-production.up.railway.app';
 import { NAVY, GOLD } from './intake/ui';
+import { T } from './intake/translations';
 import WelcomeStep from './intake/WelcomeStep';
 import ContactStep from './intake/ContactStep';
 import PurposeStep from './intake/PurposeStep';
@@ -14,7 +15,6 @@ import FeaturesStep from './intake/FeaturesStep';
 import TimelineStep from './intake/TimelineStep';
 import NotesStep from './intake/NotesStep';
 import ReviewStep from './intake/ReviewStep';
-import AISidebar from './intake/AISidebar';
 
 const INITIAL_DATA = {
   language: 'en',
@@ -35,7 +35,7 @@ const STEP_NAMES = [
   'welcome', 'purpose', 'propertyType', 'bedrooms', 'areas',
   'market', 'budget', 'payment', 'features', 'timeline', 'notes', 'contact', 'review',
 ];
-const TOTAL_STEPS = 11; // steps 1–11
+const TOTAL_STEPS = 11;
 
 export default function ClientIntakeTab() {
   const [step, setStep] = useState(0);
@@ -78,18 +78,25 @@ export default function ClientIntakeTab() {
     }
   }
 
+  const language = data.language || 'en';
+  const lang = T[language] || T.en;
+  const isAr = language === 'ar';
+  const arabicFont = "'Cairo', sans-serif";
+  const defaultFont = '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif';
+  const fontFamily = isAr ? arabicFont : defaultFont;
+
   const progressPct = step === 0 ? 0 : step >= 12 ? 100 : Math.round((step / TOTAL_STEPS) * 100);
-  const stepProps = { data, update, onNext: next, onBack: back, onGoTo: goTo };
+  const stepProps = { data, update, onNext: next, onBack: back, onGoTo: goTo, language };
   const isWelcome = step === 0;
 
-  // Welcome — full width, light standalone card
   if (isWelcome) {
     return (
-      <div style={{ fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
+      <div style={{ fontFamily }}>
+        <style>{`@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');`}</style>
         <WelcomeStep
           onStart={next}
-          language={data.language}
-          onLanguage={lang => update({ language: lang })}
+          language={language}
+          onLanguage={l => update({ language: l })}
         />
       </div>
     );
@@ -98,17 +105,50 @@ export default function ClientIntakeTab() {
   if (submitted) {
     return (
       <div style={{
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+        fontFamily, direction: isAr ? 'rtl' : 'ltr',
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        minHeight: '60vh', textAlign: 'center', padding: '60px 24px',
+        minHeight: '100vh', textAlign: 'center', padding: '60px 24px',
+        background: '#fff',
       }}>
-        <div>
-          <div style={{ fontSize: 64, marginBottom: 24 }}>✓</div>
-          <h2 style={{ fontSize: 28, fontWeight: 800, color: NAVY, margin: '0 0 12px' }}>
-            Thank You, {data.fullName || 'there'}!
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');
+          @keyframes checkPop { 0% { transform: scale(0); opacity: 0; } 60% { transform: scale(1.2); } 100% { transform: scale(1); opacity: 1; } }
+          @keyframes pulse { 0%,100% { opacity: 0.4; transform: scale(1); } 50% { opacity: 1; transform: scale(1.05); } }
+        `}</style>
+        <div style={{ maxWidth: 480 }}>
+          {/* Animated checkmark */}
+          <div style={{
+            width: 80, height: 80, borderRadius: '50%',
+            background: 'linear-gradient(135deg, #C9A84C, #E8C15A)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            margin: '0 auto 32px',
+            animation: 'checkPop 0.5s ease forwards',
+            boxShadow: '0 8px 32px rgba(201,168,76,0.35)',
+          }}>
+            <svg width="36" height="36" viewBox="0 0 36 36" fill="none">
+              <path d="M7 18 L15 26 L29 10" stroke="#fff" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+          </div>
+
+          <h2 style={{ fontSize: 30, fontWeight: 800, color: NAVY, margin: '0 0 16px', lineHeight: 1.2 }}>
+            {lang.thankYou.title(data.fullName || (isAr ? 'عزيزي العميل' : 'there'))}
           </h2>
-          <p style={{ fontSize: 16, color: '#6B7280', maxWidth: 420, margin: '0 auto', lineHeight: 1.6 }}>
-            Your requirements have been received. One of our advisors will review your profile and get in touch with you shortly.
+
+          {/* AI scanning badge */}
+          <div style={{
+            display: 'inline-flex', alignItems: 'center', gap: 8,
+            background: '#F0FDF4', border: '1px solid #BBF7D0',
+            borderRadius: 100, padding: '8px 20px', marginBottom: 20,
+            animation: 'pulse 2s ease infinite',
+          }}>
+            <span style={{ fontSize: 16 }}>🤖</span>
+            <span style={{ fontSize: 13, fontWeight: 700, color: '#15803D' }}>
+              {isAr ? 'الذكاء الاصطناعي يعمل الآن...' : 'AI is scanning now...'}
+            </span>
+          </div>
+
+          <p style={{ fontSize: 16, color: '#6B7280', margin: '0 auto', lineHeight: 1.75, maxWidth: 440 }}>
+            {lang.thankYou.body}
           </p>
         </div>
       </div>
@@ -117,27 +157,27 @@ export default function ClientIntakeTab() {
 
   return (
     <div style={{
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-      display: 'flex', minHeight: '100vh',
-      background: '#fff',
+      fontFamily, direction: isAr ? 'rtl' : 'ltr',
+      display: 'flex', minHeight: '100vh', background: '#fff',
     }}>
-      {/* Main form — full screen, no sidebar */}
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&display=swap');`}</style>
+
       <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 
         {/* Progress bar */}
         <div style={{ padding: '16px 32px 0', background: '#fff', borderBottom: '1px solid #F1F5F9' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
             <div style={{ fontSize: 12, fontWeight: 600, color: '#94A3B8' }}>
-              {step < 12 ? `Step ${step} of ${TOTAL_STEPS}` : '✓ Review & Confirm'}
+              {step < 12 ? lang.step(step, TOTAL_STEPS) : lang.reviewStep}
             </div>
             <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-              <span style={{ fontSize: 12, fontWeight: 700, color: GOLD }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: '#C9A84C' }}>
                 {step >= 12 ? '100%' : `${progressPct}%`}
               </span>
               <button onClick={() => { setStep(0); }} style={{
                 fontSize: 11, color: '#9CA3AF', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'inherit',
               }}>
-                ✕ Restart
+                {lang.restart}
               </button>
             </div>
           </div>
@@ -145,13 +185,13 @@ export default function ClientIntakeTab() {
             <div style={{
               height: '100%',
               width: `${step >= 12 ? 100 : progressPct}%`,
-              background: `linear-gradient(90deg, ${GOLD}, #E8C15A)`,
+              background: `linear-gradient(90deg, #C9A84C, #E8C15A)`,
               borderRadius: 2, transition: 'width 0.4s ease',
             }} />
           </div>
         </div>
 
-        {/* Step content with fade animation */}
+        {/* Step content */}
         <div style={{ flex: 1, overflowY: 'auto', padding: '32px 40px' }}>
           <div key={step} style={{ animation: 'fadeSlide 0.3s ease' }}>
             {step === 1 && <PurposeStep {...stepProps} />}
@@ -183,10 +223,9 @@ export default function ClientIntakeTab() {
         </div>
       </div>
 
-
       <style>{`
         @keyframes fadeSlide {
-          from { opacity: 0; transform: translateX(18px); }
+          from { opacity: 0; transform: translateX(${isAr ? '-' : ''}18px); }
           to   { opacity: 1; transform: translateX(0); }
         }
       `}</style>

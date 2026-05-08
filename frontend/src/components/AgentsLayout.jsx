@@ -8,6 +8,7 @@ const RED = '#dc2626';
 const navItems = [
   { to: '/agents', label: 'Dashboard', icon: '▦', exact: true },
   { to: '/agents/client-reports', label: 'Client Reports', icon: '📋' },
+  { to: '/agents/referral-partners', label: 'Referral Partners', icon: '🤝' },
   { to: '/agents/properties', label: 'Property Vault', icon: '🏢' },
   { to: '/agents/list-property', label: 'List Property', icon: '➕' },
   { to: '/agents/promotions', label: 'Promotions', icon: '🎯' },

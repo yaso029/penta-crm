@@ -1,18 +1,19 @@
 import { NAVY, BORDER, BackBtn, NextBtn, StepTitle } from './ui';
+import { T } from './translations';
 
-export default function NotesStep({ data, update, onNext, onBack }) {
+export default function NotesStep({ data, update, onNext, onBack, language = 'en' }) {
+  const lang = T[language] || T.en;
+  const p = lang.notes;
+
   return (
     <div style={{ maxWidth: 560, margin: '0 auto' }}>
-      <BackBtn onClick={onBack} />
-      <StepTitle
-        title="Anything else we should know?"
-        subtitle="Add any specific requirements, preferences, or questions for our team."
-      />
+      <BackBtn onClick={onBack} label={lang.back} />
+      <StepTitle title={p.title} subtitle={p.subtitle} />
 
       <textarea
         value={data.additionalNotes}
         onChange={e => update({ additionalNotes: e.target.value })}
-        placeholder="e.g. Close to a specific school, near the metro, high floor preference, specific developer in mind, investment for my kids, relocating from London in September..."
+        placeholder={p.placeholder}
         rows={6}
         style={{
           width: '100%', padding: '14px 16px',
@@ -27,10 +28,10 @@ export default function NotesStep({ data, update, onNext, onBack }) {
       />
 
       <div style={{ fontSize: 12, color: '#9CA3AF', marginTop: 8 }}>
-        Optional — you can skip this step
+        {p.optional}
       </div>
 
-      <NextBtn onClick={onNext} label="Review My Answers →" />
+      <NextBtn onClick={onNext} label={p.nextLabel} />
     </div>
   );
 }

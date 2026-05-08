@@ -1,35 +1,36 @@
 import { NAVY, BackBtn, NextBtn, StepTitle, ToggleCard } from './ui';
+import { T } from './translations';
 
-const PURPOSE_OPTS = [
-  { value: 'investment', icon: '📈', label: 'Investment', description: 'Buy to earn rental income or capital growth' },
-  { value: 'end_user', icon: '🏠', label: 'Personal Use', description: 'Buy to live in the property yourself' },
-];
+export default function PurposeStep({ data, update, onNext, onBack, language = 'en' }) {
+  const lang = T[language] || T.en;
+  const p = lang.purpose;
 
-const INVESTMENT_OPTS = [
-  { value: 'rental_yield', icon: '🔑', label: 'Rental Yield', description: 'Steady monthly rental income' },
-  { value: 'capital', icon: '📊', label: 'Capital Appreciation', description: 'Buy now, sell higher later' },
-  { value: 'both', icon: '⭐', label: 'Both', description: 'Rental income + long-term growth' },
-];
-
-const RESIDENCE_OPTS = [
-  { value: 'primary', icon: '🏡', label: 'Primary Residence', description: 'My main home in Dubai' },
-  { value: 'holiday', icon: '☀️', label: 'Holiday Home', description: 'Use occasionally, rent when away' },
-];
-
-export default function PurposeStep({ data, update, onNext, onBack }) {
   const canProceed = data.purpose &&
     (data.purpose === 'investment' ? !!data.investmentGoal : !!data.residenceType);
 
+  const purposeOpts = [
+    { value: 'investment', icon: '📈', label: p.investment, description: p.investmentDesc },
+    { value: 'end_user', icon: '🏠', label: p.endUser, description: p.endUserDesc },
+  ];
+
+  const investmentOpts = [
+    { value: 'rental_yield', icon: '🔑', label: p.rentalYield, description: p.rentalYieldDesc },
+    { value: 'capital', icon: '📊', label: p.capital, description: p.capitalDesc },
+    { value: 'both', icon: '⭐', label: p.both, description: p.bothDesc },
+  ];
+
+  const residenceOpts = [
+    { value: 'primary', icon: '🏡', label: p.primary, description: p.primaryDesc },
+    { value: 'holiday', icon: '☀️', label: p.holiday, description: p.holidayDesc },
+  ];
+
   return (
     <div style={{ maxWidth: 620, margin: '0 auto' }}>
-      <BackBtn onClick={onBack} />
-      <StepTitle
-        title="What's your purchase purpose?"
-        subtitle="This helps us recommend the right type of property and communities for you."
-      />
+      <BackBtn onClick={onBack} label={lang.back} />
+      <StepTitle title={p.title} subtitle={p.subtitle} />
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 32 }}>
-        {PURPOSE_OPTS.map(opt => (
+        {purposeOpts.map(opt => (
           <ToggleCard
             key={opt.value}
             icon={opt.icon}
@@ -43,11 +44,9 @@ export default function PurposeStep({ data, update, onNext, onBack }) {
 
       {data.purpose === 'investment' && (
         <div style={{ animation: 'fadeUp 0.25s ease' }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: NAVY, marginBottom: 16 }}>
-            What's your investment goal?
-          </p>
+          <p style={{ fontSize: 14, fontWeight: 600, color: NAVY, marginBottom: 16 }}>{p.goalLabel}</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
-            {INVESTMENT_OPTS.map(opt => (
+            {investmentOpts.map(opt => (
               <ToggleCard
                 key={opt.value}
                 icon={opt.icon}
@@ -64,11 +63,9 @@ export default function PurposeStep({ data, update, onNext, onBack }) {
 
       {data.purpose === 'end_user' && (
         <div style={{ animation: 'fadeUp 0.25s ease' }}>
-          <p style={{ fontSize: 14, fontWeight: 600, color: NAVY, marginBottom: 16 }}>
-            What type of residence?
-          </p>
+          <p style={{ fontSize: 14, fontWeight: 600, color: NAVY, marginBottom: 16 }}>{p.residenceLabel}</p>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-            {RESIDENCE_OPTS.map(opt => (
+            {residenceOpts.map(opt => (
               <ToggleCard
                 key={opt.value}
                 icon={opt.icon}
@@ -82,7 +79,7 @@ export default function PurposeStep({ data, update, onNext, onBack }) {
         </div>
       )}
 
-      <NextBtn onClick={onNext} disabled={!canProceed} />
+      <NextBtn onClick={onNext} disabled={!canProceed} label={lang.next} />
       <style>{`@keyframes fadeUp { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }`}</style>
     </div>
   );

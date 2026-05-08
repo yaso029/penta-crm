@@ -1,15 +1,16 @@
 import { BackBtn, NextBtn, StepTitle, Pill } from './ui';
+import { T } from './translations';
 
 const OPTIONS = ['Studio', '1 BR', '2 BR', '3 BR', '4 BR', '5+ BR'];
 
-export default function BedroomsStep({ data, update, onNext, onBack }) {
+export default function BedroomsStep({ data, update, onNext, onBack, language = 'en' }) {
+  const lang = T[language] || T.en;
+  const p = lang.bedrooms;
+
   return (
     <div style={{ maxWidth: 560, margin: '0 auto' }}>
-      <BackBtn onClick={onBack} />
-      <StepTitle
-        title="How many bedrooms?"
-        subtitle="Select the size that best fits your needs."
-      />
+      <BackBtn onClick={onBack} label={lang.back} />
+      <StepTitle title={p.title} subtitle={p.subtitle} />
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12 }}>
         {OPTIONS.map(opt => (
@@ -22,7 +23,7 @@ export default function BedroomsStep({ data, update, onNext, onBack }) {
         ))}
       </div>
 
-      <NextBtn onClick={onNext} disabled={!data.bedrooms} />
+      <NextBtn onClick={onNext} disabled={!data.bedrooms} label={lang.next} />
     </div>
   );
 }

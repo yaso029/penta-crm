@@ -128,6 +128,25 @@ class Partner(Base):
     commissions = relationship("Commission", back_populates="partner")
 
 
+class ReferralApplication(Base):
+    __tablename__ = "referral_applications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    full_name = Column(String(200), nullable=False)
+    phone = Column(String(50), nullable=False)
+    email = Column(String(200), nullable=True)
+    job = Column(String(200), nullable=True)
+    nationality = Column(String(10), nullable=True)
+    language = Column(String(5), default='en')
+    agreed_to_terms = Column(Boolean, default=False)
+    status = Column(String(50), default='interested')
+    assigned_to = Column(Integer, ForeignKey('users.id'), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    assigned_user = relationship("User", foreign_keys=[assigned_to])
+
+
 class WhatsAppTemplate(Base):
     __tablename__ = "whatsapp_templates"
 
