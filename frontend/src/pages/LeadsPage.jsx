@@ -28,14 +28,28 @@ function AddLeadModal({ onClose, onAdded, teamMembers }) {
   const { user } = useAuth();
   const [form, setForm] = useState({ full_name: '', phone: '', email: '', source: 'Other', budget: '', property_type: '', preferred_area: '', notes: '', assigned_to: '' });
   const [loading, setLoading] = useState(false);
+  const [customSource, setCustomSource] = useState('');
+  const [isCustomSource, setIsCustomSource] = useState(false);
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
+
+  const handleSourceChange = e => {
+    if (e.target.value === '__custom__') {
+      setIsCustomSource(true);
+      setForm(f => ({ ...f, source: '' }));
+    } else {
+      setIsCustomSource(false);
+      setCustomSource('');
+      setForm(f => ({ ...f, source: e.target.value }));
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      const payload = { ...form, assigned_to: form.assigned_to ? parseInt(form.assigned_to) : undefined };
+      const resolvedSource = isCustomSource ? customSource.trim() || 'Other' : form.source;
+      const payload = { ...form, source: resolvedSource, assigned_to: form.assigned_to ? parseInt(form.assigned_to) : undefined };
       const { data } = await api.post('/api/leads', payload);
       onAdded(data);
       toast.success('Lead added!');
@@ -64,9 +78,19 @@ function AddLeadModal({ onClose, onAdded, teamMembers }) {
             <div><label style={labelStyle}>Email</label><input style={inputStyle} type="email" value={form.email} onChange={set('email')} /></div>
             <div>
               <label style={labelStyle}>Source</label>
-              <select style={inputStyle} value={form.source} onChange={set('source')}>
-                {SOURCES.map(s => <option key={s}>{s}</option>)}
+              <select style={inputStyle} value={isCustomSource ? '__custom__' : form.source} onChange={handleSourceChange}>
+                {SOURCES.map(s => <option key={s} value={s}>{s}</option>)}
+                <option value="__custom__">＋ Add new source...</option>
               </select>
+              {isCustomSource && (
+                <input
+                  style={{ ...inputStyle, marginTop: -8, borderColor: GOLD }}
+                  placeholder="Type source name..."
+                  value={customSource}
+                  onChange={e => setCustomSource(e.target.value)}
+                  autoFocus
+                />
+              )}
             </div>
             <div><label style={labelStyle}>Budget (AED)</label><input style={inputStyle} value={form.budget} onChange={set('budget')} placeholder="e.g. 2,000,000" /></div>
             <div><label style={labelStyle}>Property Type</label><input style={inputStyle} value={form.property_type} onChange={set('property_type')} placeholder="Apartment, Villa..." /></div>
