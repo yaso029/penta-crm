@@ -65,6 +65,7 @@ export default function App() {
         <Route path="leads" element={<LeadsPage />} />
         <Route path="leads/:id" element={<LeadDetailPage />} />
         <Route path="client-reports" element={<ClientReports />} />
+        <Route path="referral-partners" element={<ReferralPartners />} />
         <Route path="users" element={
           <PrivateRoute roles={['admin']}>
             <UsersPage />
