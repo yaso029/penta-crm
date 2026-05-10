@@ -73,8 +73,6 @@ export default function Layout() {
     { to: '/crm', label: 'Dashboard', icon: '▦', exact: true },
     { to: '/crm/kanban', label: 'Pipeline', icon: '◫' },
     { to: '/crm/leads', label: 'Leads', icon: '☰' },
-    { to: '/crm/client-reports', label: 'Client Reports', icon: '📋' },
-    { to: '/crm/referral-partners', label: 'Referral Partners', icon: '🤝' },
     ...(user?.role === 'admin' ? [
       { to: '/crm/customers', label: 'Customers', icon: '👥' },
       { to: '/crm/users', label: 'Users', icon: '◎' },
@@ -92,8 +90,8 @@ export default function Layout() {
           boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
         }}>
           <div>
-            <div style={{ fontSize: 16, fontWeight: 800 }}>Penta CRM</div>
-            <div style={{ fontSize: 9, letterSpacing: 2, color: GOLD, textTransform: 'uppercase' }}>Real Estate</div>
+            <div style={{ fontSize: 16, fontWeight: 800 }}>EcoFinTec</div>
+            <div style={{ fontSize: 9, letterSpacing: 2, color: GOLD, textTransform: 'uppercase' }}>FinTec Solutions</div>
           </div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             {/* Notifications */}
@@ -205,8 +203,8 @@ export default function Layout() {
         flexDirection: 'column', position: 'fixed', top: 0, left: 0, height: '100vh', zIndex: 100,
       }}>
         <div style={{ padding: '28px 24px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-          <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.5px' }}>Penta CRM</div>
-          <div style={{ fontSize: 10, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginTop: 2 }}>Real Estate</div>
+          <div style={{ fontSize: 22, fontWeight: 800, letterSpacing: '-0.5px' }}>EcoFinTec</div>
+          <div style={{ fontSize: 10, letterSpacing: 3, color: GOLD, textTransform: 'uppercase', marginTop: 2 }}>FinTec Solutions</div>
         </div>
 
         <nav style={{ flex: 1, padding: '16px 12px' }}>

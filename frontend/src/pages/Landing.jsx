@@ -8,41 +8,11 @@ const MODULES = [
     key: 'crm',
     icon: '📋',
     title: 'CRM',
-    subtitle: 'Leads, Pipeline & Team',
-    desc: 'Manage real estate leads, track pipeline stages, assign brokers and monitor your team performance.',
+    subtitle: 'Clients & Pipeline',
+    desc: 'Manage client leads, track proposal stages, assign team members and monitor your sales performance.',
     bg: 'linear-gradient(135deg, #1e3a5f 0%, #0d2340 100%)',
     type: 'active',
     path: '/crm',
-  },
-  {
-    key: 'partnerships',
-    icon: '🤝',
-    title: 'Partnerships',
-    subtitle: 'Referral Outreach',
-    desc: 'Manage referral partners, run WhatsApp & Email campaigns and track commission payouts.',
-    bg: 'linear-gradient(135deg, #3b1f6b 0%, #2d1660 100%)',
-    type: 'restricted',
-    path: '/partnerships',
-  },
-  {
-    key: 'agents',
-    icon: '📊',
-    title: 'Agents Dashboard',
-    subtitle: 'Property Vault & Resources',
-    desc: 'Browse property listings, promotions, developer events and training videos for the team.',
-    bg: 'linear-gradient(135deg, #7f1d1d 0%, #6b1313 100%)',
-    type: 'active',
-    path: '/agents',
-  },
-  {
-    key: 'ai',
-    icon: '🧠',
-    title: 'AI Model',
-    subtitle: 'Real Estate Intelligence',
-    desc: 'Market data from Reelly & Bayut, AI-powered client matching, intake conversations and PDF reports.',
-    bg: 'linear-gradient(135deg, #2d1e0e 0%, #1a1208 100%)',
-    type: 'restricted',
-    path: '/ai',
   },
   {
     key: 'hr',
@@ -59,7 +29,7 @@ const MODULES = [
     icon: '💰',
     title: 'Accounting',
     subtitle: 'Finance & Reports',
-    desc: 'Invoices, expenses, commissions and detailed financial reporting.',
+    desc: 'Invoices, expenses, and detailed financial reporting.',
     bg: 'linear-gradient(135deg, #1a3a1a 0%, #112811 100%)',
     type: 'coming_soon',
   },
@@ -164,10 +134,10 @@ export default function Landing() {
             fontSize: 19, fontWeight: 900, color: '#0d1728',
             boxShadow: '0 4px 18px rgba(201,168,76,0.35)',
           }}>P</div>
-          <div style={{ fontSize: 21, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px' }}>Penta System</div>
+          <div style={{ fontSize: 21, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px' }}>EcoFinTec</div>
         </div>
         <div style={{ fontSize: 9, letterSpacing: 3, color: '#C9A84C', textTransform: 'uppercase', marginBottom: 36, paddingLeft: 54 }}>
-          Real Estate Platform
+          FinTec Solutions
         </div>
 
         {/* Divider */}

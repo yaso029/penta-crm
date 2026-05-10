@@ -10,18 +10,20 @@ const NAVY = '#0A2342';
 const GOLD = '#C9A84C';
 
 const STAGE_COLORS = {
-  new_lead: '#6366f1', follow_up: '#f59e0b', no_answer: '#64748b',
-  pre_meeting: '#8b5cf6', meeting_done: '#06b6d4', deal_closed: '#10b981',
-  not_interested: '#f97316', wrong_number: '#ec4899', junk: '#ef4444',
+  new_lead: '#6366f1', contacted: '#3b82f6', qualified: '#8b5cf6',
+  proposal_sent: '#f59e0b', follow_up: '#f97316', meeting_done: '#06b6d4',
+  contract_signed: '#10b981', active_client: '#059669',
+  not_interested: '#64748b', lost: '#ef4444',
 };
 
 const STAGE_LABELS = {
-  new_lead: 'New Lead', follow_up: 'Follow Up', no_answer: 'No Answer',
-  pre_meeting: 'Pre Meeting', meeting_done: 'Meeting Done', deal_closed: 'Deal Closed',
-  not_interested: 'Not Interested', wrong_number: 'Wrong Number', junk: 'Junk',
+  new_lead: 'New Lead', contacted: 'Contacted', qualified: 'Qualified',
+  proposal_sent: 'Proposal Sent', follow_up: 'Follow Up', meeting_done: 'Meeting Done',
+  contract_signed: 'Contract Signed', active_client: 'Active Client',
+  not_interested: 'Not Interested', lost: 'Lost',
 };
 
-const SOURCES = ['Meta Ads', 'Website', 'WhatsApp', 'Referral', 'Property Finder', 'Bayut', 'Walk-in', 'Other'];
+const SOURCES = ['Referral', 'LinkedIn', 'Website', 'Cold Call', 'Event', 'Partner', 'Other'];
 const STAGES = Object.keys(STAGE_LABELS);
 
 function AddLeadModal({ onClose, onAdded, teamMembers }) {

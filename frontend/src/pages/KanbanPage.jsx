@@ -9,20 +9,20 @@ const GOLD = '#C9A84C';
 
 const STAGES = [
   { key: 'new_lead', label: 'New Lead', color: '#6366f1' },
-  { key: 'follow_up', label: 'Follow Up', color: '#f59e0b' },
-  { key: 'no_answer', label: 'No Answer', color: '#64748b' },
-  { key: 'pre_meeting', label: 'Pre Meeting', color: '#8b5cf6' },
+  { key: 'contacted', label: 'Contacted', color: '#3b82f6' },
+  { key: 'qualified', label: 'Qualified', color: '#8b5cf6' },
+  { key: 'proposal_sent', label: 'Proposal Sent', color: '#f59e0b' },
+  { key: 'follow_up', label: 'Follow Up', color: '#f97316' },
   { key: 'meeting_done', label: 'Meeting Done', color: '#06b6d4' },
-  { key: 'deal_closed', label: 'Deal Closed', color: '#10b981' },
-  { key: 'not_interested', label: 'Not Interested', color: '#f97316' },
-  { key: 'wrong_number', label: 'Wrong Number', color: '#ec4899' },
-  { key: 'junk', label: 'Junk', color: '#ef4444' },
+  { key: 'contract_signed', label: 'Contract Signed', color: '#10b981' },
+  { key: 'active_client', label: 'Active Client', color: '#059669' },
+  { key: 'not_interested', label: 'Not Interested', color: '#64748b' },
+  { key: 'lost', label: 'Lost', color: '#ef4444' },
 ];
 
 const SOURCE_ICONS = {
-  'Meta Ads': '📘', 'Website': '🌐', 'WhatsApp': '💬', 'Referral': '🤝',
-  'Property Finder': '🔍', 'Bayut': '🏠', 'Walk-in': '🚶', 'Other': '📌',
-  'zapier': '⚡', 'other': '📌',
+  'Referral': '🤝', 'LinkedIn': '💼', 'Website': '🌐', 'Cold Call': '📞',
+  'Event': '🎯', 'Partner': '🏢', 'Other': '📌',
 };
 
 function LeadCard({ lead, index, onClick }) {

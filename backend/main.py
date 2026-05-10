@@ -69,19 +69,12 @@ app.include_router(hr.router)
 def seed_admin():
     db = SessionLocal()
     try:
-        old = db.query(models.User).filter(models.User.email == "admin@pentadcrm.com").first()
-        if old:
-            old.full_name = "Yaso"
-            old.email = "yaso@pentacrm.com"
-            old.password_hash = hash_password("Yaso@123")
-            db.commit()
-            return
-        existing = db.query(models.User).filter(models.User.email == "yaso@pentacrm.com").first()
+        existing = db.query(models.User).filter(models.User.email == "admin@ecofintec.com").first()
         if not existing:
             admin = models.User(
-                full_name="Yaso",
-                email="yaso@pentacrm.com",
-                password_hash=hash_password("Yaso@123"),
+                full_name="EcoFinTec Admin",
+                email="admin@ecofintec.com",
+                password_hash=hash_password("EcoAdmin@123"),
                 role="admin",
                 is_active=True,
             )
