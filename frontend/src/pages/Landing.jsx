@@ -49,9 +49,10 @@ const MODULES = [
     icon: '👥',
     title: 'HR',
     subtitle: 'Human Resources',
-    desc: 'Employee records, attendance tracking, leave requests and HR workflows.',
+    desc: 'Employee records, documents, photo profiles and full identity management.',
     bg: 'linear-gradient(135deg, #1c3a3a 0%, #112e2e 100%)',
-    type: 'coming_soon',
+    type: 'restricted',
+    path: '/hr',
   },
   {
     key: 'accounting',

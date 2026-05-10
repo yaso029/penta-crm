@@ -128,6 +128,48 @@ class Partner(Base):
     commissions = relationship("Commission", back_populates="partner")
 
 
+class Employee(Base):
+    __tablename__ = "employees"
+
+    id = Column(Integer, primary_key=True, index=True)
+    photo_url = Column(String(500), nullable=True)
+    photo_public_id = Column(String(300), nullable=True)
+    full_name = Column(String(200), nullable=False)
+    job_title = Column(String(200), nullable=True)
+    department = Column(String(100), nullable=True)
+    phone = Column(String(50), nullable=True)
+    email = Column(String(200), nullable=True)
+    nationality = Column(String(10), nullable=True)
+    date_of_birth = Column(String(20), nullable=True)
+    date_joined = Column(String(20), nullable=True)
+    employment_type = Column(String(50), default='full_time')
+    status = Column(String(50), default='active')
+    emirates_id = Column(String(100), nullable=True)
+    emirates_id_expiry = Column(String(20), nullable=True)
+    passport_number = Column(String(100), nullable=True)
+    passport_expiry = Column(String(20), nullable=True)
+    visa_expiry = Column(String(20), nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    documents = relationship("EmployeeDocument", back_populates="employee", cascade="all, delete-orphan")
+
+
+class EmployeeDocument(Base):
+    __tablename__ = "employee_documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    employee_id = Column(Integer, ForeignKey("employees.id"), nullable=False)
+    label = Column(String(200), nullable=False)
+    file_url = Column(String(500), nullable=False)
+    file_public_id = Column(String(300), nullable=True)
+    file_name = Column(String(300), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    employee = relationship("Employee", back_populates="documents")
+
+
 class ReferralApplication(Base):
     __tablename__ = "referral_applications"
 

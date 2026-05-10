@@ -33,6 +33,8 @@ import ClientMatcher from './pages/aimodel/ClientMatcher';
 import IntakeAI from './pages/aimodel/IntakeAI';
 import ScrapeControl from './pages/aimodel/ScrapeControl';
 import PublicIntakePage from './pages/PublicIntakePage';
+import HRLayout from './components/HRLayout';
+import Employees from './pages/hr/Employees';
 import PublicReferralPage from './pages/PublicReferralPage';
 import ReferralPartners from './pages/agents/ReferralPartners';
 import ReferralApplications from './pages/partnerships/ReferralApplications';
@@ -118,6 +120,15 @@ export default function App() {
         <Route path="match" element={<ClientMatcher />} />
         <Route path="intake" element={<IntakeAI />} />
         <Route path="scrape" element={<ScrapeControl />} />
+      </Route>
+
+      {/* HR module — admin only */}
+      <Route path="/hr" element={
+        <PrivateRoute roles={['admin']}>
+          <HRLayout />
+        </PrivateRoute>
+      }>
+        <Route index element={<Employees />} />
       </Route>
 
       <Route path="*" element={<Navigate to="/" replace />} />
