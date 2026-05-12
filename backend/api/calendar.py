@@ -136,7 +136,9 @@ async def upload_event_image(
             pass
 
     result = upload_image(contents, folder="penta_calendar")
-    event.image_url = result["secure_url"]
+    if "error" in result:
+        raise HTTPException(status_code=500, detail=result["error"])
+    event.image_url = result["url"]
     event.image_public_id = result["public_id"]
     db.commit()
     return {"image_url": event.image_url}
