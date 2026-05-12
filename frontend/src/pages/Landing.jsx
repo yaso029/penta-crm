@@ -2,6 +2,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../AuthContext';
 import { useState, useEffect } from 'react';
 import api from '../api';
+import useIsMobile from '../hooks/useIsMobile';
 
 const MODULES = [
   {
@@ -107,6 +108,7 @@ const ROLE_LABELS = { admin: 'Administrator', team_leader: 'Team Leader', broker
 export default function Landing() {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const isMobile = useIsMobile();
   const [modal, setModal] = useState(null);
   const [stats, setStats] = useState({ leads: '—', partners: '—', properties: '—' });
 
@@ -141,6 +143,115 @@ export default function Landing() {
     { label: 'Referral Partners', value: stats.partners, fill: '#a78bfa', pct: '55%' },
     { label: 'Properties Listed', value: stats.properties, fill: '#f87171', pct: '40%' },
   ];
+
+  if (isMobile) {
+    return (
+      <div style={{ minHeight: '100vh', background: '#0b0f1a', display: 'flex', flexDirection: 'column' }}>
+        {modal && <Modal title={modal.title} message={modal.message} color={modal.color} onClose={() => setModal(null)} />}
+
+        {/* Mobile Header */}
+        <div style={{
+          background: 'linear-gradient(170deg, #0d1728 0%, #091322 100%)',
+          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          padding: '20px 20px 16px',
+          position: 'sticky', top: 0, zIndex: 50,
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{
+                width: 36, height: 36,
+                background: 'linear-gradient(135deg, #C9A84C, #f0d98a)',
+                borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 16, fontWeight: 900, color: '#0d1728',
+              }}>P</div>
+              <div>
+                <div style={{ fontSize: 16, fontWeight: 900, color: '#fff', letterSpacing: '-0.3px' }}>Penta System</div>
+                <div style={{ fontSize: 8, letterSpacing: 2, color: '#C9A84C', textTransform: 'uppercase' }}>Real Estate Platform</div>
+              </div>
+            </div>
+            <button
+              onClick={() => { localStorage.removeItem('token'); localStorage.removeItem('user'); window.location.href = '/login'; }}
+              style={{ background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: 'rgba(255,255,255,0.5)', fontSize: 12, cursor: 'pointer', padding: '7px 12px' }}
+            >Sign out</button>
+          </div>
+
+          {/* User + role */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div>
+              <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)', marginBottom: 2 }}>Welcome back</div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: '#fff' }}>{user?.full_name}</div>
+            </div>
+            <div style={{
+              background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.28)',
+              color: '#C9A84C', fontSize: 10, fontWeight: 700, letterSpacing: 1.2,
+              textTransform: 'uppercase', padding: '4px 10px', borderRadius: 20,
+            }}>
+              {ROLE_LABELS[user?.role] || user?.role}
+            </div>
+          </div>
+
+          {/* Stats row */}
+          <div style={{ display: 'flex', gap: 10, marginTop: 14 }}>
+            {[
+              { label: 'Leads', value: stats.leads, color: '#4f8ef7' },
+              { label: 'Partners', value: stats.partners, color: '#a78bfa' },
+              { label: 'Properties', value: stats.properties, color: '#f87171' },
+            ].map(s => (
+              <div key={s.label} style={{
+                flex: 1, background: 'rgba(255,255,255,0.05)', borderRadius: 10,
+                padding: '10px 8px', textAlign: 'center', border: '1px solid rgba(255,255,255,0.07)',
+              }}>
+                <div style={{ fontSize: 18, fontWeight: 900, color: s.color }}>{s.value}</div>
+                <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)', marginTop: 2 }}>{s.label}</div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Module cards */}
+        <div style={{ flex: 1, padding: '20px 16px', overflowY: 'auto' }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 14 }}>
+            Select a module
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+            {MODULES.map(mod => {
+              const isComingSoon = mod.type === 'coming_soon';
+              const isLocked = mod.type === 'restricted' && user?.role !== 'admin';
+              return (
+                <div
+                  key={mod.key}
+                  onClick={() => handleClick(mod)}
+                  style={{
+                    background: mod.bg,
+                    borderRadius: 16, padding: '20px 20px',
+                    cursor: isComingSoon ? 'default' : 'pointer',
+                    position: 'relative', overflow: 'hidden',
+                    display: 'flex', alignItems: 'center', gap: 16,
+                    opacity: isComingSoon ? 0.45 : 1,
+                    border: '1px solid rgba(255,255,255,0.06)',
+                    minHeight: 80,
+                  }}
+                >
+                  <div style={{ fontSize: 32, flexShrink: 0 }}>{mod.icon}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontSize: 16, fontWeight: 900, color: '#fff', letterSpacing: '-0.2px' }}>{mod.title}</div>
+                    <div style={{ fontSize: 10, fontWeight: 700, color: 'rgba(255,255,255,0.45)', textTransform: 'uppercase', letterSpacing: 0.8, marginTop: 2 }}>{mod.subtitle}</div>
+                  </div>
+                  {isComingSoon ? (
+                    <div style={{ fontSize: 9, fontWeight: 800, color: 'rgba(255,255,255,0.35)', background: 'rgba(0,0,0,0.2)', padding: '3px 8px', borderRadius: 10, letterSpacing: 1, textTransform: 'uppercase', flexShrink: 0 }}>Soon</div>
+                  ) : isLocked ? (
+                    <div style={{ fontSize: 16, flexShrink: 0 }}>🔒</div>
+                  ) : (
+                    <div style={{ fontSize: 18, color: 'rgba(255,255,255,0.5)', flexShrink: 0 }}>›</div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div style={{ display: 'flex', minHeight: '100vh', background: '#0b0f1a' }}>
