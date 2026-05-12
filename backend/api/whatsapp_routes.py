@@ -304,18 +304,23 @@ async def verify_webhook(request: Request):
 async def receive_webhook(request: Request, db: Session = Depends(get_db)):
     try:
         data = await request.json()
+        print(f"[WEBHOOK] received payload: {str(data)[:500]}", flush=True)
         for entry in data.get("entry", []):
             for change in entry.get("changes", []):
                 value = change.get("value", {})
-                for msg in value.get("messages", []):
+                messages = value.get("messages", [])
+                print(f"[WEBHOOK] messages count={len(messages)}", flush=True)
+                for msg in messages:
                     from_number = msg.get("from", "")
                     body = msg.get("text", {}).get("body", "")
+                    print(f"[WEBHOOK] msg from={from_number} body={body!r} type={msg.get('type')}", flush=True)
                     if not body:
                         continue
                     suggestion = ai_reply_service.analyze_reply(body)
                     partner = db.query(Partner).filter(
                         Partner.whatsapp_number.ilike(f"%{from_number[-9:]}")
                     ).first()
+                    print(f"[WEBHOOK] partner_match={partner.full_name if partner else None}", flush=True)
                     reply = IncomingReply(
                         partner_id=partner.id if partner else None,
                         channel="whatsapp",
@@ -325,6 +330,6 @@ async def receive_webhook(request: Request, db: Session = Depends(get_db)):
                     )
                     db.add(reply)
         db.commit()
-    except Exception:
-        pass
+    except Exception as e:
+        print(f"[WEBHOOK ERROR] {e}", flush=True)
     return {"status": "ok"}
