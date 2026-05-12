@@ -50,7 +50,7 @@ async def send_whatsapp_text(to_number: str, message: str) -> dict:
         return {"error": data.get("error", {}).get("message", "Send failed")}
 
 
-async def send_whatsapp_template(to_number: str, template_name: str, language: str = "en") -> dict:
+async def send_whatsapp_template(to_number: str, template_name: str, body_params: list = None, language: str = "en") -> dict:
     if not WHATSAPP_API_TOKEN or not WHATSAPP_PHONE_NUMBER_ID:
         return {"error": "WhatsApp not configured", "simulated": True, "message_id": f"sim_{to_number}"}
 
@@ -59,14 +59,19 @@ async def send_whatsapp_template(to_number: str, template_name: str, language: s
         "Authorization": f"Bearer {WHATSAPP_API_TOKEN}",
         "Content-Type": "application/json",
     }
+    template_block = {"name": template_name, "language": {"code": language}}
+    if body_params:
+        template_block["components"] = [
+            {
+                "type": "body",
+                "parameters": [{"type": "text", "text": str(p)} for p in body_params],
+            }
+        ]
     payload = {
         "messaging_product": "whatsapp",
         "to": to_number,
         "type": "template",
-        "template": {
-            "name": template_name,
-            "language": {"code": language},
-        },
+        "template": template_block,
     }
     async with httpx.AsyncClient(timeout=15) as client:
         resp = await client.post(url, json=payload, headers=headers)
