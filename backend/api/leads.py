@@ -7,6 +7,7 @@ from backend.database.db import get_db
 from backend.database.models import User, Lead, Activity
 from backend.services.auth_service import get_current_user, require_admin, require_admin_or_team_leader
 from backend.services import meta_capi_service
+from backend.services.notification_service import notify_admins, notify_user
 
 router = APIRouter(prefix="/api/leads", tags=["leads"])
 
@@ -170,6 +171,10 @@ def create_lead(req: CreateLeadRequest, current_user: User = Depends(get_current
         content=f"Lead created by {current_user.full_name}",
     )
     db.add(activity)
+    msg = f"🆕 New lead: {lead.full_name} (from {lead.source or 'unknown'}) — added by {current_user.full_name}"
+    notify_admins(db, msg, lead_id=lead.id, exclude_id=current_user.id)
+    if assigned != current_user.id:
+        notify_user(db, assigned, f"📋 A new lead has been assigned to you: {lead.full_name}", lead_id=lead.id, exclude_id=current_user.id)
     db.commit()
     db.refresh(lead)
     return lead_to_dict(lead)
@@ -211,6 +216,11 @@ async def update_stage(lead_id: int, req: StageUpdateRequest, background_tasks: 
         content=f"Stage changed from '{old_stage}' to '{req.stage}'",
     )
     db.add(activity)
+    stage_label = req.stage.replace("_", " ").title()
+    msg = f"🔄 {lead.full_name} moved to '{stage_label}' by {current_user.full_name}"
+    notify_admins(db, msg, lead_id=lead.id, exclude_id=current_user.id)
+    if lead.assigned_to:
+        notify_user(db, lead.assigned_to, msg, lead_id=lead.id, exclude_id=current_user.id)
     db.commit()
     db.refresh(lead)
     lead_snapshot = {"stage": lead.stage, "phone": lead.phone, "email": lead.email, "budget": lead.budget}
@@ -237,6 +247,8 @@ def assign_lead(lead_id: int, req: AssignRequest, current_user: User = Depends(r
         content=f"Lead reassigned from {old_assignee} to {broker.full_name}",
     )
     db.add(activity)
+    notify_user(db, req.broker_id, f"📋 Lead assigned to you: {lead.full_name} (was: {old_assignee})", lead_id=lead.id, exclude_id=current_user.id)
+    notify_admins(db, f"👤 {lead.full_name} reassigned from {old_assignee} → {broker.full_name} by {current_user.full_name}", lead_id=lead.id, exclude_id=current_user.id)
     db.commit()
     db.refresh(lead)
     return lead_to_dict(lead)
@@ -259,6 +271,11 @@ def add_activity(lead_id: int, req: ActivityRequest, current_user: User = Depend
     )
     db.add(activity)
     lead.updated_at = datetime.utcnow()
+    type_label = req.type.replace("_", " ").title()
+    msg = f"📝 {type_label} logged on {lead.full_name} by {current_user.full_name}"
+    notify_admins(db, msg, lead_id=lead_id, exclude_id=current_user.id)
+    if lead.assigned_to:
+        notify_user(db, lead.assigned_to, msg, lead_id=lead_id, exclude_id=current_user.id)
     db.commit()
     db.refresh(activity)
     return activity_to_dict(activity)

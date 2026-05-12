@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from typing import Optional
 from backend.database.db import get_db
 from backend.database.models import Lead, Activity, User
+from backend.services.notification_service import notify_admins
 import os
 import httpx
 
@@ -62,6 +63,7 @@ def zapier_inbound(
         content=f"Lead created via Zapier from: {source}",
     )
     db.add(activity)
+    notify_admins(db, f"⚡ New lead via Zapier: {lead.full_name} (source: {source})", lead_id=lead.id)
     db.commit()
     db.refresh(lead)
     return {"ok": True, "lead_id": lead.id, "message": f"Lead '{lead.full_name}' created successfully"}
@@ -132,6 +134,7 @@ async def receive_meta_leads(request: Request, db: Session = Depends(get_db)):
                     content=f"Lead received from Meta form: {source}",
                 )
                 db.add(activity)
+                notify_admins(db, f"📘 New lead from Meta Ads: {full_name} (form: {source})", lead_id=lead.id)
         db.commit()
     except Exception:
         pass
