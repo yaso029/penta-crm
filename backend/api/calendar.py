@@ -115,6 +115,33 @@ def create_event(
     return event_to_dict(event)
 
 
+@router.put("/events/{event_id}")
+def update_event(
+    event_id: int,
+    req: CreateEventRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    event = db.query(CalendarEvent).filter(CalendarEvent.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Event not found")
+    if event.created_by != current_user.id and current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Not allowed")
+
+    event.title = req.title
+    event.date = req.date
+    event.time_start = req.time_start
+    event.time_end = req.time_end
+    event.location = req.location
+    event.hosted_by = req.hosted_by
+    event.description = req.description
+    if current_user.role == "admin":
+        event.visibility = req.visibility or "everyone"
+    db.commit()
+    db.refresh(event)
+    return event_to_dict(event)
+
+
 @router.post("/events/{event_id}/image")
 async def upload_event_image(
     event_id: int,

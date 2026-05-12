@@ -49,17 +49,23 @@ function isToday(date) {
 }
 
 // ── Add/Edit Event Modal ────────────────────────────────────────────────────
-function EventModal({ user, onClose, onSaved, defaultDate }) {
+function EventModal({ user, onClose, onSaved, defaultDate, editEvent }) {
+  const isEdit = !!editEvent;
+  const isAdmin = user?.role === 'admin';
+
   const [form, setForm] = useState({
-    title: '', date: defaultDate || toLocalDateStr(new Date()),
-    time_start: '', time_end: '', location: '',
-    hosted_by: user?.full_name || '', description: '',
-    visibility: 'everyone',
+    title: editEvent?.title || '',
+    date: editEvent?.date || defaultDate || toLocalDateStr(new Date()),
+    time_start: editEvent?.time_start || '',
+    time_end: editEvent?.time_end || '',
+    location: editEvent?.location || '',
+    hosted_by: editEvent?.hosted_by || user?.full_name || '',
+    description: editEvent?.description || '',
+    visibility: editEvent?.visibility || 'everyone',
   });
   const [imageFile, setImageFile] = useState(null);
-  const [imagePreview, setImagePreview] = useState(null);
+  const [imagePreview, setImagePreview] = useState(editEvent?.image_url || null);
   const [saving, setSaving] = useState(false);
-  const isAdmin = user?.role === 'admin';
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }));
 
@@ -85,15 +91,23 @@ function EventModal({ user, onClose, onSaved, defaultDate }) {
         description: form.description || null,
         visibility: isAdmin ? form.visibility : 'everyone',
       };
-      const { data: created } = await api.post('/api/calendar/events', payload);
+      let eventId;
+      if (isEdit) {
+        await api.put(`/api/calendar/events/${editEvent.id}`, payload);
+        eventId = editEvent.id;
+        toast.success('Event updated!');
+      } else {
+        const { data: created } = await api.post('/api/calendar/events', payload);
+        eventId = created.id;
+        toast.success(isAdmin ? 'Event added!' : 'Event submitted for approval');
+      }
       if (imageFile) {
         const fd = new FormData();
         fd.append('file', imageFile);
-        await api.post(`/api/calendar/events/${created.id}/image`, fd, {
+        await api.post(`/api/calendar/events/${eventId}/image`, fd, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
       }
-      toast.success(isAdmin ? 'Event added!' : 'Event submitted for approval');
       onSaved();
       onClose();
     } catch { toast.error('Failed to save event'); }
@@ -108,7 +122,7 @@ function EventModal({ user, onClose, onSaved, defaultDate }) {
       <div onClick={e => e.stopPropagation()} style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 540, maxHeight: '90vh', overflowY: 'auto', boxShadow: '0 20px 60px rgba(0,0,0,0.25)' }}>
         <div style={{ padding: '22px 24px', borderBottom: '1px solid #f0f0f0', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontSize: 17, fontWeight: 800, color: '#1a1a2e' }}>
-            📅 {isAdmin ? 'Add Event' : 'Submit Event for Approval'}
+            📅 {isEdit ? 'Edit Event' : isAdmin ? 'Add Event' : 'Submit Event for Approval'}
           </div>
           <button onClick={onClose} style={{ background: 'none', border: 'none', fontSize: 20, cursor: 'pointer', color: '#aaa' }}>×</button>
         </div>
@@ -191,7 +205,7 @@ function EventModal({ user, onClose, onSaved, defaultDate }) {
           <div style={{ display: 'flex', gap: 10, paddingTop: 4 }}>
             <button type="button" onClick={onClose} style={{ flex: 1, padding: '10px', background: '#f5f5f5', border: 'none', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontWeight: 600, color: '#555' }}>Cancel</button>
             <button type="submit" disabled={saving} style={{ flex: 2, padding: '10px', background: INDIGO, border: 'none', borderRadius: 8, fontSize: 13, cursor: 'pointer', fontWeight: 700, color: '#fff' }}>
-              {saving ? 'Saving…' : isAdmin ? 'Add Event' : 'Submit for Approval'}
+              {saving ? 'Saving…' : isEdit ? 'Save Changes' : isAdmin ? 'Add Event' : 'Submit for Approval'}
             </button>
           </div>
         </form>
@@ -201,7 +215,7 @@ function EventModal({ user, onClose, onSaved, defaultDate }) {
 }
 
 // ── Event Detail Modal ──────────────────────────────────────────────────────
-function EventDetailModal({ event, user, onClose, onApprove, onReject, onDelete }) {
+function EventDetailModal({ event, user, onClose, onApprove, onReject, onDelete, onEdit }) {
   const isAdmin = user?.role === 'admin';
   const isPending = event.status === 'pending';
 
@@ -256,10 +270,15 @@ function EventDetailModal({ event, user, onClose, onApprove, onReject, onDelete 
             </div>
           )}
 
-          {isAdmin && !isPending && (
-            <button onClick={() => onDelete(event.id)} style={{ marginTop: 16, width: '100%', padding: '9px', background: '#fff', border: '1.5px solid #ef4444', borderRadius: 8, color: '#ef4444', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
-              🗑 Delete Event
-            </button>
+          {isAdmin && (
+            <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+              <button onClick={() => onEdit(event)} style={{ flex: 1, padding: '9px', background: '#f0f4ff', border: '1.5px solid #c7d2fe', borderRadius: 8, color: INDIGO, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                ✏️ Edit
+              </button>
+              <button onClick={() => onDelete(event.id)} style={{ flex: 1, padding: '9px', background: '#fff', border: '1.5px solid #ef4444', borderRadius: 8, color: '#ef4444', fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                🗑 Delete
+              </button>
+            </div>
           )}
         </div>
       </div>
@@ -357,6 +376,7 @@ export default function CalendarPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [showPending, setShowPending] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
+  const [editingEvent, setEditingEvent] = useState(null);
   const [selectedDay, setSelectedDay] = useState(() => toLocalDateStr(new Date())); // mobile
   const [clickedDate, setClickedDate] = useState(null);
 
@@ -436,14 +456,21 @@ export default function CalendarPage() {
   return (
     <div style={{ maxWidth: '100%' }}>
       {/* Modals */}
-      {showAddModal && (
-        <EventModal user={user} onClose={() => setShowAddModal(false)} onSaved={handleSaved} defaultDate={clickedDate} />
+      {(showAddModal || editingEvent) && (
+        <EventModal
+          user={user}
+          onClose={() => { setShowAddModal(false); setEditingEvent(null); }}
+          onSaved={handleSaved}
+          defaultDate={clickedDate}
+          editEvent={editingEvent}
+        />
       )}
       {selectedEvent && (
         <EventDetailModal event={selectedEvent} user={user} onClose={() => setSelectedEvent(null)}
           onApprove={id => { handleApprove(id); setSelectedEvent(null); }}
           onReject={id => { handleReject(id); setSelectedEvent(null); }}
-          onDelete={id => { handleDelete(id); }} />
+          onDelete={id => { handleDelete(id); }}
+          onEdit={ev => { setSelectedEvent(null); setEditingEvent(ev); }} />
       )}
       {showPending && isAdmin && (
         <PendingPanel events={pendingEvents} onApprove={handleApprove} onReject={handleReject} onClose={() => setShowPending(false)} />
