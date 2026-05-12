@@ -1,0 +1,17 @@
+{
+  "name": "Penta System",
+  "short_name": "Penta",
+  "description": "Penta Real Estate Platform",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#0d1728",
+  "icons": [
+    {
+      "src": "/penta-logo.png",
+      "sizes": "any",
+      "type": "image/png",
+      "purpose": "any"
+    }
+  ]
+}

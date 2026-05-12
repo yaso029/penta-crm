@@ -27,7 +27,7 @@ export default function PartnershipsLayout() {
         flexDirection: 'column', position: 'fixed', top: 0, left: 0, height: '100vh', zIndex: 100,
       }}>
         <div style={{ padding: '28px 24px 20px', borderBottom: '1px solid rgba(255,255,255,0.1)' }}>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>Penta CRM</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#fff', letterSpacing: '-0.5px' }}>Penta System</div>
           <div style={{
             display: 'inline-block', marginTop: 6,
             background: 'rgba(124,58,237,0.25)', border: '1px solid rgba(124,58,237,0.5)',

@@ -15,7 +15,7 @@ function formatExpiry(iso) {
 
 export default function Promotions() {
   const { user } = useAuth();
-  const isAdmin = user?.role === 'admin';
+  const isAdmin = true; // all users can add promotions
   const [promos, setPromos] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
