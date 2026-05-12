@@ -292,6 +292,24 @@ def take_action(reply_id: int, action: str, current_user=Depends(require_admin),
 
 VERIFY_TOKEN = os.environ.get("WHATSAPP_VERIFY_TOKEN", "pentacrm_verify_2024")
 
+
+@router.post("/subscribe-phone")
+async def subscribe_phone(current_user=Depends(require_admin)):
+    """Subscribe the WhatsApp phone number to receive incoming message webhooks."""
+    token = os.environ.get("WHATSAPP_API_TOKEN", "")
+    phone_id = os.environ.get("WHATSAPP_PHONE_NUMBER_ID", "")
+    if not token or not phone_id:
+        raise HTTPException(status_code=400, detail="WhatsApp env vars not set")
+    url = f"https://graph.facebook.com/v18.0/{phone_id}/subscribed_apps"
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.post(url, headers={"Authorization": f"Bearer {token}"})
+        data = resp.json()
+        print(f"[SUBSCRIBE] status={resp.status_code} response={data}", flush=True)
+        if resp.status_code == 200 and data.get("success"):
+            return {"ok": True, "message": "Phone number subscribed to webhooks"}
+        return {"ok": False, "detail": data}
+
+
 @router.get("/webhook")
 async def verify_webhook(request: Request):
     params = dict(request.query_params)
