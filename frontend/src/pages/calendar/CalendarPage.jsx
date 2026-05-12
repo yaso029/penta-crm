@@ -340,7 +340,7 @@ function EventCard({ event, onClick }) {
         background: isPending ? '#fffbeb' : '#fff',
         border: `1.5px ${isPending ? 'dashed #fbbf24' : 'solid #e8e8e8'}`,
         borderLeft: `3px solid ${isPending ? '#f59e0b' : INDIGO}`,
-        borderRadius: 8, padding: '6px 8px', marginBottom: 6,
+        borderRadius: 8, padding: '6px 8px',
         cursor: 'pointer', transition: 'box-shadow 0.12s',
         display: 'flex', gap: 8, alignItems: 'center',
       }}
@@ -546,28 +546,51 @@ export default function CalendarPage() {
           </div>
         </div>
       ) : (
-        /* ── Desktop: 7-column week grid ── */
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 8 }}>
+        /* ── Desktop: horizontal day rows ── */
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           {weekDays.map((d, i) => {
             const str = toLocalDateStr(d);
             const today = isToday(d);
             const dayEvents = eventsByDate[str] || [];
             return (
-              <div key={str} style={{ background: today ? '#f5f3ff' : '#fff', borderRadius: 12, border: `1.5px solid ${today ? '#c4b5fd' : '#e8e8e8'}`, overflow: 'hidden', minHeight: 320 }}>
-                {/* Day header */}
+              <div key={str} style={{
+                background: today ? '#f5f3ff' : '#fff',
+                borderRadius: 12,
+                border: `1.5px solid ${today ? '#c4b5fd' : '#e8e8e8'}`,
+                display: 'flex',
+                alignItems: 'stretch',
+                overflow: 'hidden',
+                minHeight: 80,
+              }}>
+                {/* Day label — left fixed column */}
                 <div
                   onClick={() => { if (isAdmin) { setClickedDate(str); setShowAddModal(true); } }}
-                  style={{ padding: '12px 10px 10px', borderBottom: '1px solid #f0f0f0', background: today ? `${INDIGO}10` : 'transparent', cursor: isAdmin ? 'pointer' : 'default' }}
+                  style={{
+                    width: 88, flexShrink: 0,
+                    borderRight: `1.5px solid ${today ? '#c4b5fd' : '#f0f0f0'}`,
+                    background: today ? `${INDIGO}10` : 'transparent',
+                    cursor: isAdmin ? 'pointer' : 'default',
+                    display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                    padding: '12px 8px',
+                  }}
                 >
-                  <div style={{ fontSize: 10, fontWeight: 700, color: today ? INDIGO : '#aaa', textTransform: 'uppercase', letterSpacing: 0.8 }}>{DAY_NAMES[i]}</div>
-                  <div style={{ fontSize: 22, fontWeight: 900, color: today ? INDIGO : '#1a1a2e', lineHeight: 1 }}>{d.getDate()}</div>
-                  {isAdmin && <div style={{ fontSize: 9, color: today ? INDIGO : '#bbb', marginTop: 2 }}>+ add event</div>}
+                  <div style={{ fontSize: 10, fontWeight: 700, color: today ? INDIGO : '#bbb', textTransform: 'uppercase', letterSpacing: 1 }}>{DAY_NAMES[i]}</div>
+                  <div style={{ fontSize: 28, fontWeight: 900, color: today ? INDIGO : '#1a1a2e', lineHeight: 1.1 }}>{d.getDate()}</div>
+                  {isAdmin && <div style={{ fontSize: 9, color: today ? `${INDIGO}99` : '#ccc', marginTop: 4 }}>+ add</div>}
                 </div>
 
-                {/* Events */}
-                <div style={{ padding: '8px 8px', overflowY: 'auto', maxHeight: 400 }}>
-                  {dayEvents.map(ev => (
-                    <EventCard key={ev.id} event={ev} onClick={setSelectedEvent} />
+                {/* Events — horizontal row */}
+                <div style={{
+                  flex: 1, padding: '10px 14px',
+                  display: 'flex', flexWrap: 'wrap', gap: 10,
+                  alignContent: 'center',
+                }}>
+                  {dayEvents.length === 0 ? (
+                    <span style={{ fontSize: 12, color: '#ddd' }}>No events</span>
+                  ) : dayEvents.map(ev => (
+                    <div key={ev.id} style={{ width: 230 }}>
+                      <EventCard event={ev} onClick={setSelectedEvent} />
+                    </div>
                   ))}
                 </div>
               </div>
