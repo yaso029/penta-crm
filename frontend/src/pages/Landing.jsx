@@ -112,10 +112,6 @@ export default function Landing() {
   const [modal, setModal] = useState(null);
   const [stats, setStats] = useState({ leads: '—', partners: '—', properties: '—' });
 
-  // HR-only users go straight to HR
-  useEffect(() => {
-    if (user?.role === 'hr_admin') navigate('/hr', { replace: true });
-  }, [user]);
 
   useEffect(() => {
     Promise.allSettled([

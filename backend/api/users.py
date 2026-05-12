@@ -72,7 +72,7 @@ def get_my_team(current_user: User = Depends(get_current_user), db: Session = De
 
 @router.post("")
 def create_user(req: CreateUserRequest, current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
-    if req.role not in ("admin", "team_leader", "broker"):
+    if req.role not in ("admin", "team_leader", "broker", "hr_admin"):
         raise HTTPException(status_code=400, detail="Invalid role")
     email = req.email if req.email else generate_email(req.full_name)
     existing = db.query(User).filter(User.email == email).first()
