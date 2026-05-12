@@ -122,9 +122,9 @@ export default function App() {
         <Route path="scrape" element={<ScrapeControl />} />
       </Route>
 
-      {/* HR module — admin only */}
+      {/* HR module — admin + hr_admin */}
       <Route path="/hr" element={
-        <PrivateRoute roles={['admin']}>
+        <PrivateRoute roles={['admin', 'hr_admin']}>
           <HRLayout />
         </PrivateRoute>
       }>

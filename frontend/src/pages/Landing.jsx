@@ -103,7 +103,7 @@ function Modal({ title, message, color, onClose }) {
   );
 }
 
-const ROLE_LABELS = { admin: 'Administrator', team_leader: 'Team Leader', broker: 'Broker' };
+const ROLE_LABELS = { admin: 'Administrator', team_leader: 'Team Leader', broker: 'Broker', hr_admin: 'HR Admin' };
 
 export default function Landing() {
   const navigate = useNavigate();
@@ -111,6 +111,11 @@ export default function Landing() {
   const isMobile = useIsMobile();
   const [modal, setModal] = useState(null);
   const [stats, setStats] = useState({ leads: '—', partners: '—', properties: '—' });
+
+  // HR-only users go straight to HR
+  useEffect(() => {
+    if (user?.role === 'hr_admin') navigate('/hr', { replace: true });
+  }, [user]);
 
   useEffect(() => {
     Promise.allSettled([
@@ -130,6 +135,7 @@ export default function Landing() {
     if (mod.type === 'active') { navigate(mod.path); return; }
     if (mod.type === 'restricted') {
       if (user?.role === 'admin') { navigate(mod.path); return; }
+      if (user?.role === 'hr_admin' && mod.key === 'hr') { navigate(mod.path); return; }
       setModal({ title: 'No Permission', message: "You don't have permission to access this module. Contact your administrator.", color: '#7c3aed' });
       return;
     }

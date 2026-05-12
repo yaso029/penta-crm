@@ -4,7 +4,7 @@ from pydantic import BaseModel
 from typing import Optional, List
 from backend.database.db import get_db
 from backend.database.models import Employee, EmployeeDocument
-from backend.services.auth_service import require_admin
+from backend.services.auth_service import require_hr_access as require_admin
 from backend.services.cloudinary_service import upload_image, upload_file, delete_image, delete_file
 
 router = APIRouter(prefix="/api/hr", tags=["hr"])

@@ -43,9 +43,7 @@ export default function LeadDetailPage() {
 
   useEffect(() => {
     fetchLead();
-    if (user?.role !== 'broker') {
-      api.get('/api/users/team').then(r => setTeamMembers(r.data)).catch(() => {});
-    }
+    api.get('/api/users/team').then(r => setTeamMembers(r.data)).catch(() => {});
   }, [id]);
 
   const fetchLead = async () => {
@@ -106,13 +104,13 @@ export default function LeadDetailPage() {
   const currentStage = STAGES.find(s => s.key === lead.stage) || STAGES[0];
 
   return (
-    <div style={{ maxWidth: 1100, margin: '0 auto', padding: isMobile ? '0' : undefined }}>
+    <div style={{ maxWidth: 1100, margin: '0 auto' }}>
       {/* Header */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 24 }}>
-        <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#888' }}>←</button>
-        <div style={{ flex: 1 }}>
-          <h1 style={{ fontSize: 22, fontWeight: 700, color: '#1a1a2e' }}>{lead.full_name}</h1>
-          <div style={{ display: 'flex', gap: 8, marginTop: 4, alignItems: 'center' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 20 }}>
+        <button onClick={() => navigate(-1)} style={{ background: 'none', border: 'none', fontSize: 18, cursor: 'pointer', color: '#888', flexShrink: 0 }}>←</button>
+        <div style={{ flex: 1, minWidth: 0 }}>
+          <h1 style={{ fontSize: isMobile ? 17 : 22, fontWeight: 700, color: '#1a1a2e', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{lead.full_name}</h1>
+          <div style={{ display: 'flex', gap: 8, marginTop: 4, alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={{
               background: `${currentStage.color}20`, color: currentStage.color,
               borderRadius: 20, padding: '3px 12px', fontSize: 12, fontWeight: 600,
@@ -159,7 +157,7 @@ export default function LeadDetailPage() {
             </div>
 
             {editing ? (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0 16px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '0 16px' }}>
                 {[['Budget', 'budget', 'AED amount'], ['Property Type', 'property_type', 'Apartment, Villa...'], ['Preferred Area', 'preferred_area', 'Downtown, Marina...']].map(([label, key, ph]) => (
                   <div key={key}>
                     <div style={{ fontSize: 11, fontWeight: 600, color: '#888', marginBottom: 4, textTransform: 'uppercase' }}>{label}</div>
@@ -184,7 +182,7 @@ export default function LeadDetailPage() {
                 </div>
               </div>
             ) : (
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px 24px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 1fr', gap: '14px 24px' }}>
                 {[
                   ['Phone', lead.phone], ['Email', lead.email || '—'],
                   ['Source', lead.source], ['Budget', lead.budget ? `AED ${Number(lead.budget).toLocaleString()}` : '—'],
@@ -210,7 +208,7 @@ export default function LeadDetailPage() {
           <div style={{ background: '#fff', borderRadius: 12, padding: '20px 24px', boxShadow: '0 1px 6px rgba(0,0,0,0.07)' }}>
             <h3 style={{ fontSize: 14, fontWeight: 600, color: '#555', marginBottom: 14 }}>Log Activity</h3>
             <form onSubmit={addActivity} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {ACTIVITY_TYPES.map(t => (
                   <button
                     key={t}
@@ -248,8 +246,8 @@ export default function LeadDetailPage() {
 
         {/* Right column - Activity timeline */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-          {/* Assign */}
-          {(user?.role === 'admin' || user?.role === 'team_leader') && teamMembers.length > 0 && (
+          {/* Assign — available to all users */}
+          {teamMembers.length > 0 && (
             <div style={{ background: '#fff', borderRadius: 12, padding: '16px 20px', boxShadow: '0 1px 6px rgba(0,0,0,0.07)' }}>
               <h3 style={{ fontSize: 13, fontWeight: 600, color: '#555', marginBottom: 10 }}>Assign To</h3>
               <select
@@ -257,7 +255,7 @@ export default function LeadDetailPage() {
                 onChange={e => assignTo(e.target.value)}
                 style={{ width: '100%', padding: '9px 12px', border: '1.5px solid #e0e0e0', borderRadius: 7, fontSize: 13, outline: 'none' }}
               >
-                <option value="">Select broker...</option>
+                <option value="">Select agent...</option>
                 {teamMembers.map(m => <option key={m.id} value={m.id}>{m.full_name}</option>)}
               </select>
             </div>

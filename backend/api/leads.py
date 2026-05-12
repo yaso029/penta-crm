@@ -230,7 +230,7 @@ async def update_stage(lead_id: int, req: StageUpdateRequest, background_tasks: 
 
 
 @router.patch("/{lead_id}/assign")
-def assign_lead(lead_id: int, req: AssignRequest, current_user: User = Depends(require_admin_or_team_leader), db: Session = Depends(get_db)):
+def assign_lead(lead_id: int, req: AssignRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
     broker = db.query(User).filter(User.id == req.broker_id, User.is_active == True).first()
     if not broker:
         raise HTTPException(status_code=404, detail="Broker not found")

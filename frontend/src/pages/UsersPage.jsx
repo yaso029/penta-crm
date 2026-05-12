@@ -5,8 +5,8 @@ import toast from 'react-hot-toast';
 const NAVY = '#0A2342';
 const GOLD = '#C9A84C';
 
-const ROLE_COLORS = { admin: '#8b5cf6', team_leader: '#3b82f6', broker: '#10b981' };
-const ROLE_LABELS = { admin: 'Admin', team_leader: 'Team Leader', broker: 'Broker' };
+const ROLE_COLORS = { admin: '#8b5cf6', team_leader: '#3b82f6', broker: '#10b981', hr_admin: '#0d7377' };
+const ROLE_LABELS = { admin: 'Admin', team_leader: 'Team Leader', broker: 'Broker', hr_admin: 'HR Admin' };
 
 function PasswordRevealModal({ name, password, onClose }) {
   const [copied, setCopied] = useState(false);
@@ -147,6 +147,7 @@ function UserModal({ user, teamLeaders, onClose, onSaved }) {
           <select style={inputStyle} value={form.role} onChange={set('role')}>
             <option value="broker">Broker</option>
             <option value="team_leader">Team Leader</option>
+            <option value="hr_admin">HR Admin</option>
             <option value="admin">Admin</option>
           </select>
 

@@ -61,3 +61,9 @@ def require_admin_or_team_leader(current_user: User = Depends(get_current_user))
     if current_user.role not in ("admin", "team_leader"):
         raise HTTPException(status_code=403, detail="Admin or Team Leader access required")
     return current_user
+
+
+def require_hr_access(current_user: User = Depends(get_current_user)) -> User:
+    if current_user.role not in ("admin", "hr_admin"):
+        raise HTTPException(status_code=403, detail="HR access required")
+    return current_user
