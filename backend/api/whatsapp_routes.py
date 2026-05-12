@@ -8,6 +8,7 @@ from backend.database.models import Partner, WhatsAppTemplate, OutreachMessage, 
 from backend.services.auth_service import require_admin
 from backend.services import whatsapp_service, ai_reply_service
 import os
+import re
 
 router = APIRouter(prefix="/api/whatsapp", tags=["whatsapp"])
 
@@ -117,7 +118,22 @@ async def send_whatsapp(req: SendRequest, current_user=Depends(require_admin), d
 
         if template and template.meta_status == "approved":
             template_name = template.name.lower().replace(" ", "_")
-            result = await whatsapp_service.send_whatsapp_template(to_number, template_name)
+            var_map = {
+                "name": partner.full_name or "",
+                "company": partner.company or "",
+                "partner_type": partner.partner_type or "",
+                "commission_rate": str(partner.commission_rate or "0.5") + "%",
+            }
+            body_params = []
+            seen: set = set()
+            for match in re.finditer(r"\{(\w+)\}", template.body or ""):
+                var = match.group(1)
+                if var in var_map and var not in seen:
+                    body_params.append(var_map[var])
+                    seen.add(var)
+            result = await whatsapp_service.send_whatsapp_template(
+                to_number, template_name, body_params=body_params or None
+            )
         else:
             result = await whatsapp_service.send_whatsapp_text(to_number, body)
 
