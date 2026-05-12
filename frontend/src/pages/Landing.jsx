@@ -4,6 +4,16 @@ import { useState, useEffect } from 'react';
 import api from '../api';
 import useIsMobile from '../hooks/useIsMobile';
 
+const VIDEO_CATEGORIES = ['training', 'project', 'marketing', 'other'];
+const VIDEO_CAT_LABELS = { training: 'Training', project: 'Project', marketing: 'Marketing', other: 'Other' };
+const VIDEO_CAT_COLORS = { training: '#16a34a', project: '#0891b2', marketing: '#f59e0b', other: '#888' };
+
+function getYouTubeId(url) {
+  if (!url) return null;
+  const match = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|embed\/|shorts\/))([a-zA-Z0-9_-]{11})/);
+  return match ? match[1] : null;
+}
+
 const MODULES = [
   {
     key: 'crm',
@@ -121,6 +131,9 @@ export default function Landing() {
   const isMobile = useIsMobile();
   const [modal, setModal] = useState(null);
   const [stats, setStats] = useState({ leads: '—', partners: '—', properties: '—' });
+  const [videos, setVideos] = useState([]);
+  const [videoCat, setVideoCat] = useState('');
+  const [playing, setPlaying] = useState(null);
 
 
   useEffect(() => {
@@ -136,6 +149,11 @@ export default function Landing() {
       });
     });
   }, []);
+
+  useEffect(() => {
+    const params = videoCat ? { category: videoCat } : {};
+    api.get('/api/agents/videos', { params }).then(r => setVideos(r.data)).catch(() => {});
+  }, [videoCat]);
 
   const handleClick = (mod) => {
     if (mod.type === 'active') { navigate(mod.path); return; }
@@ -260,9 +278,60 @@ export default function Landing() {
               );
             })}
           </div>
+
+          {/* Mobile video section */}
+          {videos.length > 0 && (
+            <div style={{ marginTop: 32 }}>
+              <div style={{ fontSize: 11, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 10 }}>Video Library</div>
+              <div style={{ display: 'flex', gap: 8, marginBottom: 16, flexWrap: 'wrap' }}>
+                {[['', 'All'], ...VIDEO_CATEGORIES.map(c => [c, VIDEO_CAT_LABELS[c]])].map(([val, label]) => (
+                  <button key={val} onClick={() => setVideoCat(val)} style={{
+                    padding: '5px 14px', borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: 'pointer', border: 'none',
+                    background: videoCat === val ? 'rgba(201,168,76,0.25)' : 'rgba(255,255,255,0.07)',
+                    color: videoCat === val ? '#C9A84C' : 'rgba(255,255,255,0.5)',
+                  }}>{label}</button>
+                ))}
+              </div>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {videos.map(v => {
+                  const ytId = getYouTubeId(v.youtube_url);
+                  const thumb = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null;
+                  return (
+                    <div key={v.id} onClick={() => ytId && setPlaying(ytId)}
+                      style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, overflow: 'hidden', cursor: ytId ? 'pointer' : 'default', display: 'flex', gap: 12, padding: 12, alignItems: 'center' }}>
+                      <div style={{ width: 72, height: 54, borderRadius: 8, overflow: 'hidden', flexShrink: 0, position: 'relative', background: '#111' }}>
+                        {thumb
+                          ? <img src={thumb} alt={v.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                          : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#444' }}>▶️</div>}
+                        {ytId && (
+                          <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.3)' }}>
+                            <div style={{ width: 26, height: 26, background: 'rgba(255,255,255,0.9)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 10 }}>▶</div>
+                          </div>
+                        )}
+                      </div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <span style={{ fontSize: 9, fontWeight: 700, color: VIDEO_CAT_COLORS[v.category] || '#888', textTransform: 'uppercase' }}>{VIDEO_CAT_LABELS[v.category] || v.category}</span>
+                        <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginTop: 2, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{v.title}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
         </div>
+
+        {playing && (
+          <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}
+            onClick={() => setPlaying(null)}>
+            <div onClick={e => e.stopPropagation()} style={{ width: '95%', aspectRatio: '16/9', borderRadius: 10, overflow: 'hidden', position: 'relative' }}>
+              <button onClick={() => setPlaying(null)} style={{ position: 'absolute', top: -36, right: 0, background: 'none', border: 'none', color: '#fff', fontSize: 28, cursor: 'pointer' }}>×</button>
+              <iframe src={`https://www.youtube.com/embed/${playing}?autoplay=1`} style={{ width: '100%', height: '100%', border: 'none' }} allow="autoplay; fullscreen" title="Video" />
+            </div>
+          </div>
+        )}
       </div>
-    );
+  );
   }
 
   return (
@@ -343,6 +412,17 @@ export default function Landing() {
           ← Sign out
         </button>
       </aside>
+
+      {/* Video play modal */}
+      {playing && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 2000 }}
+          onClick={() => setPlaying(null)}>
+          <div onClick={e => e.stopPropagation()} style={{ width: '90%', maxWidth: 860, aspectRatio: '16/9', borderRadius: 14, overflow: 'hidden', position: 'relative' }}>
+            <button onClick={() => setPlaying(null)} style={{ position: 'absolute', top: -40, right: 0, background: 'none', border: 'none', color: '#fff', fontSize: 30, cursor: 'pointer' }}>×</button>
+            <iframe src={`https://www.youtube.com/embed/${playing}?autoplay=1`} style={{ width: '100%', height: '100%', border: 'none' }} allow="autoplay; fullscreen" title="Video" />
+          </div>
+        </div>
+      )}
 
       {/* ── RIGHT PANEL ── */}
       <main style={{ flex: 1, padding: '44px 40px', overflowY: 'auto' }}>
@@ -447,6 +527,55 @@ export default function Landing() {
             );
           })}
         </div>
+
+        {/* ── VIDEO RESOURCES ── */}
+        {videos.length > 0 && (
+          <div style={{ marginTop: 52 }}>
+            <div style={{ marginBottom: 20 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>Resources</div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px' }}>Video Library</div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, marginBottom: 20, flexWrap: 'wrap' }}>
+              {[['', 'All'], ...VIDEO_CATEGORIES.map(c => [c, VIDEO_CAT_LABELS[c]])].map(([val, label]) => (
+                <button key={val} onClick={() => setVideoCat(val)} style={{
+                  padding: '6px 16px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', border: 'none',
+                  background: videoCat === val ? 'rgba(201,168,76,0.25)' : 'rgba(255,255,255,0.07)',
+                  color: videoCat === val ? '#C9A84C' : 'rgba(255,255,255,0.5)',
+                }}>{label}</button>
+              ))}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: 16 }}>
+              {videos.map(v => {
+                const ytId = getYouTubeId(v.youtube_url);
+                const thumb = ytId ? `https://img.youtube.com/vi/${ytId}/mqdefault.jpg` : null;
+                return (
+                  <div key={v.id} onClick={() => ytId && setPlaying(ytId)}
+                    style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, overflow: 'hidden', cursor: ytId ? 'pointer' : 'default', transition: 'transform 0.15s', }}
+                    onMouseEnter={e => e.currentTarget.style.transform = 'translateY(-3px)'}
+                    onMouseLeave={e => e.currentTarget.style.transform = ''}>
+                    <div style={{ height: 150, position: 'relative', overflow: 'hidden', background: '#111' }}>
+                      {thumb
+                        ? <img src={thumb} alt={v.title} style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }} />
+                        : <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', fontSize: 40, color: '#444' }}>▶️</div>}
+                      {ytId && (
+                        <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.25)' }}>
+                          <div style={{ width: 48, height: 48, background: 'rgba(255,255,255,0.9)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 18 }}>▶</div>
+                        </div>
+                      )}
+                    </div>
+                    <div style={{ padding: '12px 14px' }}>
+                      <span style={{ fontSize: 10, fontWeight: 700, color: VIDEO_CAT_COLORS[v.category] || '#888', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                        {VIDEO_CAT_LABELS[v.category] || v.category}
+                      </span>
+                      <div style={{ fontSize: 13, fontWeight: 700, color: '#fff', marginTop: 4 }}>{v.title}</div>
+                      {v.description && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 4, lineHeight: 1.5 }}>{v.description}</div>}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
