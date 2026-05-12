@@ -7,6 +7,7 @@ const TEAL = '#0d7377';
 
 const navItems = [
   { to: '/hr', label: 'Employees', icon: '👤', exact: true },
+  { to: '/hr/ecards', label: 'E-Business Cards', icon: '💳' },
 ];
 
 export default function HRLayout() {

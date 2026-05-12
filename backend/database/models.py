@@ -29,6 +29,27 @@ class User(Base):
     notifications = relationship("Notification", back_populates="user")
 
 
+class ECard(Base):
+    __tablename__ = "ecards"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    slug = Column(String(100), unique=True, index=True, nullable=False)
+    full_name = Column(String(200), nullable=False)
+    job_title = Column(String(200), nullable=True)
+    phone = Column(String(50), nullable=True)
+    whatsapp = Column(String(50), nullable=True)
+    email = Column(String(200), nullable=True)
+    website = Column(String(200), nullable=True)
+    linkedin = Column(String(200), nullable=True)
+    photo_url = Column(String(500), nullable=True)
+    photo_public_id = Column(String(300), nullable=True)
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    owner = relationship("User", foreign_keys=[user_id])
+
+
 class Lead(Base):
     __tablename__ = "leads"
 

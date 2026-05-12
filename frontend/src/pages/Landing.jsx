@@ -87,6 +87,16 @@ const MODULES = [
     path: '/promotions',
   },
   {
+    key: 'ecards',
+    icon: '💳',
+    title: 'E-Business Cards',
+    subtitle: 'Digital Cards & QR',
+    desc: 'View and share digital business cards for the whole team. Scan, save contacts, share instantly.',
+    bg: 'linear-gradient(135deg, #0A2342 0%, #1a3a5f 100%)',
+    type: 'active',
+    path: '/ecards',
+  },
+  {
     key: 'settings',
     icon: '⚙️',
     title: 'Settings',

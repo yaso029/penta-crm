@@ -32,9 +32,12 @@ import ScrapeControl from './pages/aimodel/ScrapeControl';
 import PublicIntakePage from './pages/PublicIntakePage';
 import HRLayout from './components/HRLayout';
 import Employees from './pages/hr/Employees';
+import ECards from './pages/hr/ECards';
 import CalendarLayout from './components/CalendarLayout';
 import CalendarPage from './pages/calendar/CalendarPage';
 import PublicReferralPage from './pages/PublicReferralPage';
+import PublicCardPage from './pages/PublicCardPage';
+import ECardsPage from './pages/ECardsPage';
 import SettingsPage from './pages/SettingsPage';
 import VideosPage from './pages/VideosPage';
 import PromotionsPage from './pages/PromotionsPage';
@@ -56,6 +59,7 @@ export default function App() {
       {/* Public — no auth required */}
       <Route path="/intake" element={<PublicIntakePage />} />
       <Route path="/referral" element={<PublicReferralPage />} />
+      <Route path="/card/:slug" element={<PublicCardPage />} />
 
       <Route path="/login" element={user ? <Navigate to="/" replace /> : <LoginPage />} />
 
@@ -126,7 +130,11 @@ export default function App() {
         </PrivateRoute>
       }>
         <Route index element={<Employees />} />
+        <Route path="ecards" element={<ECards />} />
       </Route>
+
+      {/* E-Business Cards — all authenticated users */}
+      <Route path="/ecards" element={<PrivateRoute><ECardsPage /></PrivateRoute>} />
 
       {/* Settings — all authenticated users */}
       <Route path="/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />

@@ -18,6 +18,7 @@ from backend.api import public_referral
 from backend.api import referral_applications
 from backend.api import hr
 from backend.api import calendar as calendar_routes
+from backend.api import ecards as ecards_routes
 import os
 
 app = FastAPI(title="Penta CRM API", version="2.0.0")
@@ -68,6 +69,9 @@ app.include_router(hr.router)
 
 # Calendar module — all authenticated users
 app.include_router(calendar_routes.router)
+
+# E-Cards — HR manages, all users view
+app.include_router(ecards_routes.router)
 
 
 def seed_admin():
