@@ -132,6 +132,17 @@ async def send_whatsapp(req: SendRequest, current_user=Depends(require_admin), d
                     if var in var_map and var not in seen:
                         body_params.append(var_map[var])
                         seen.add(var)
+                # If DB body has no variables, ask Meta how many params the approved template expects
+                if not body_params:
+                    ordered = [
+                        partner.full_name or "",
+                        partner.company or "",
+                        partner.partner_type or "",
+                        str(partner.commission_rate or "0.5") + "%",
+                    ]
+                    count = await whatsapp_service.get_meta_template_param_count(template_name)
+                    body_params = ordered[:count] if count else []
+
                 print(f"[WA SEND] template={template_name} body_params={body_params} to={to_number}", flush=True)
                 result = await whatsapp_service.send_whatsapp_template(
                     to_number, template_name, body_params=body_params or None

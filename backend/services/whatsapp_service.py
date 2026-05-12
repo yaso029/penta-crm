@@ -1,4 +1,5 @@
 import os
+import re
 import httpx
 from datetime import datetime, timezone, timedelta
 
@@ -80,6 +81,29 @@ async def send_whatsapp_template(to_number: str, template_name: str, body_params
             msg_id = data.get("messages", [{}])[0].get("id", "")
             return {"ok": True, "message_id": msg_id}
         return {"error": data.get("error", {}).get("message", "Send failed")}
+
+
+async def get_meta_template_param_count(template_name: str) -> int:
+    """Return the number of {{N}} variables in the approved Meta template body."""
+    if not WHATSAPP_API_TOKEN or not WHATSAPP_BUSINESS_ACCOUNT_ID:
+        return 0
+    url = f"https://graph.facebook.com/v18.0/{WHATSAPP_BUSINESS_ACCOUNT_ID}/message_templates"
+    headers = {"Authorization": f"Bearer {WHATSAPP_API_TOKEN}"}
+    async with httpx.AsyncClient(timeout=15) as client:
+        resp = await client.get(url, headers=headers, params={"name": template_name})
+        if resp.status_code != 200:
+            return 0
+        data = resp.json()
+        templates = data.get("data", [])
+        if not templates:
+            return 0
+        for component in templates[0].get("components", []):
+            if component.get("type") == "BODY":
+                body_text = component.get("text", "")
+                count = len(set(re.findall(r"\{\{(\d+)\}\}", body_text)))
+                print(f"[META PARAMS] template={template_name} body={body_text!r} count={count}", flush=True)
+                return count
+    return 0
 
 
 async def check_template_status(template_name: str) -> dict:
