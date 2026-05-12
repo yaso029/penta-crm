@@ -38,6 +38,7 @@ import Employees from './pages/hr/Employees';
 import CalendarLayout from './components/CalendarLayout';
 import CalendarPage from './pages/calendar/CalendarPage';
 import PublicReferralPage from './pages/PublicReferralPage';
+import SettingsPage from './pages/SettingsPage';
 import ReferralPartners from './pages/agents/ReferralPartners';
 import ReferralApplications from './pages/partnerships/ReferralApplications';
 
@@ -70,11 +71,6 @@ export default function App() {
         <Route path="leads/:id" element={<LeadDetailPage />} />
         <Route path="client-reports" element={<ClientReports />} />
         <Route path="referral-partners" element={<ReferralPartners />} />
-        <Route path="users" element={
-          <PrivateRoute roles={['admin']}>
-            <UsersPage />
-          </PrivateRoute>
-        } />
         <Route path="customers" element={
           <PrivateRoute roles={['admin']}>
             <CustomersPage />
@@ -137,6 +133,9 @@ export default function App() {
       }>
         <Route index element={<Employees />} />
       </Route>
+
+      {/* Settings — all authenticated users */}
+      <Route path="/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

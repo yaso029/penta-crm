@@ -48,6 +48,20 @@ def generate_email(name: str) -> str:
     return f"{slug}@penta.crm"
 
 
+@router.get("/me")
+def get_me(current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    return user_to_dict(current_user)
+
+
+@router.patch("/me/password")
+def change_own_password(req: UpdatePasswordRequest, current_user: User = Depends(get_current_user), db: Session = Depends(get_db)):
+    if len(req.password) < 4:
+        raise HTTPException(status_code=400, detail="Password too short")
+    current_user.password_hash = hash_password(req.password)
+    db.commit()
+    return {"ok": True}
+
+
 @router.get("")
 def list_users(current_user: User = Depends(require_admin), db: Session = Depends(get_db)):
     users = db.query(User).order_by(User.created_at.desc()).all()

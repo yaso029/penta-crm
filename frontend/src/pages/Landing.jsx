@@ -14,6 +14,13 @@ function getYouTubeId(url) {
   return match ? match[1] : null;
 }
 
+function formatExpiry(iso) {
+  if (!iso) return null;
+  const d = new Date(iso);
+  const expired = d < new Date();
+  return { formatted: d.toLocaleDateString('en-AE', { day: 'numeric', month: 'short', year: 'numeric' }), expired };
+}
+
 const MODULES = [
   {
     key: 'crm',
@@ -76,6 +83,16 @@ const MODULES = [
     path: '/calendar',
   },
   {
+    key: 'settings',
+    icon: '⚙️',
+    title: 'Settings',
+    subtitle: 'Account & Management',
+    desc: 'View your account details, change your password, and manage system users.',
+    bg: 'linear-gradient(135deg, #1c1c2e 0%, #12121f 100%)',
+    type: 'active',
+    path: '/settings',
+  },
+  {
     key: 'accounting',
     icon: '💰',
     title: 'Accounting',
@@ -134,6 +151,11 @@ export default function Landing() {
   const [videos, setVideos] = useState([]);
   const [videoCat, setVideoCat] = useState('');
   const [playing, setPlaying] = useState(null);
+  const [promos, setPromos] = useState([]);
+  const [showPromoForm, setShowPromoForm] = useState(false);
+  const [promoForm, setPromoForm] = useState({ title: '', description: '', developer: '', discount_percent: '', promo_details: '', expires_at: '', image_url: '' });
+  const [promoSaving, setPromoSaving] = useState(false);
+  const [promoUploading, setPromoUploading] = useState(false);
 
 
   useEffect(() => {
@@ -154,6 +176,47 @@ export default function Landing() {
     const params = videoCat ? { category: videoCat } : {};
     api.get('/api/agents/videos', { params }).then(r => setVideos(r.data)).catch(() => {});
   }, [videoCat]);
+
+  useEffect(() => {
+    api.get('/api/agents/promotions').then(r => setPromos(r.data)).catch(() => {});
+  }, []);
+
+  const fetchPromos = () => api.get('/api/agents/promotions').then(r => setPromos(r.data)).catch(() => {});
+
+  const handlePromoImageUpload = async (file) => {
+    if (!file) return;
+    setPromoUploading(true);
+    const token = localStorage.getItem('token');
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await fetch((import.meta.env.VITE_API_URL || 'https://penta-crm-production.up.railway.app') + '/api/agents/upload-image', {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: fd,
+      });
+      const data = await res.json();
+      if (data.url) setPromoForm(f => ({ ...f, image_url: data.url }));
+    } catch {}
+    setPromoUploading(false);
+  };
+
+  const handlePromoSubmit = async (e) => {
+    e.preventDefault();
+    setPromoSaving(true);
+    const payload = { ...promoForm, discount_percent: promoForm.discount_percent !== '' ? parseFloat(promoForm.discount_percent) : null, expires_at: promoForm.expires_at || null };
+    try {
+      await api.post('/api/agents/promotions', payload);
+      setShowPromoForm(false);
+      setPromoForm({ title: '', description: '', developer: '', discount_percent: '', promo_details: '', expires_at: '', image_url: '' });
+      fetchPromos();
+    } catch {}
+    setPromoSaving(false);
+  };
+
+  const handlePromoDelete = async (id) => {
+    if (!window.confirm('Delete this promotion?')) return;
+    await api.delete(`/api/agents/promotions/${id}`);
+    fetchPromos();
+  };
 
   const handleClick = (mod) => {
     if (mod.type === 'active') { navigate(mod.path); return; }
@@ -576,6 +639,101 @@ export default function Landing() {
             </div>
           </div>
         )}
+        {/* ── PROMOTIONS ── */}
+        <div style={{ marginTop: 52 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+            <div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: 'rgba(255,255,255,0.3)', letterSpacing: 2, textTransform: 'uppercase', marginBottom: 6 }}>Offers</div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: '#fff', letterSpacing: '-0.5px' }}>Promotions</div>
+            </div>
+            <button onClick={() => { setPromoForm({ title: '', description: '', developer: '', discount_percent: '', promo_details: '', expires_at: '', image_url: '' }); setShowPromoForm(true); }}
+              style={{ padding: '10px 20px', background: '#e11d48', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+              + Add Promotion
+            </button>
+          </div>
+
+          {showPromoForm && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}>
+              <div style={{ background: '#1a1f2e', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 32, width: '100%', maxWidth: 520, maxHeight: '90vh', overflowY: 'auto' }}>
+                <div style={{ fontSize: 18, fontWeight: 800, color: '#fff', marginBottom: 24 }}>New Promotion</div>
+                <form onSubmit={handlePromoSubmit}>
+                  {[['title','Title',true],['developer','Developer',false],['discount_percent','Discount %',false]].map(([field, label, req]) => (
+                    <div key={field} style={{ marginBottom: 14 }}>
+                      <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginBottom: 5 }}>{label}{req && ' *'}</label>
+                      <input type={field === 'discount_percent' ? 'number' : 'text'} value={promoForm[field]} required={req}
+                        onChange={e => setPromoForm(f => ({ ...f, [field]: e.target.value }))}
+                        style={{ width: '100%', padding: '9px 12px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontSize: 13, color: '#fff', outline: 'none', boxSizing: 'border-box' }} />
+                    </div>
+                  ))}
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginBottom: 5 }}>Expires</label>
+                    <input type="date" value={promoForm.expires_at} onChange={e => setPromoForm(f => ({ ...f, expires_at: e.target.value }))}
+                      style={{ width: '100%', padding: '9px 12px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontSize: 13, color: '#fff', outline: 'none', boxSizing: 'border-box', colorScheme: 'dark' }} />
+                  </div>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginBottom: 5 }}>Description</label>
+                    <textarea value={promoForm.description} rows={2} onChange={e => setPromoForm(f => ({ ...f, description: e.target.value }))}
+                      style={{ width: '100%', padding: '9px 12px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontSize: 13, color: '#fff', outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
+                  </div>
+                  <div style={{ marginBottom: 14 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginBottom: 5 }}>Promo Details</label>
+                    <textarea value={promoForm.promo_details} rows={3} onChange={e => setPromoForm(f => ({ ...f, promo_details: e.target.value }))}
+                      style={{ width: '100%', padding: '9px 12px', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, fontSize: 13, color: '#fff', outline: 'none', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit' }} />
+                  </div>
+                  <div style={{ marginBottom: 20 }}>
+                    <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'rgba(255,255,255,0.5)', marginBottom: 5 }}>Image</label>
+                    <input type="file" accept="image/*" onChange={e => handlePromoImageUpload(e.target.files[0])} style={{ fontSize: 12, color: 'rgba(255,255,255,0.6)' }} />
+                    {promoUploading && <div style={{ fontSize: 11, color: '#888', marginTop: 4 }}>Uploading...</div>}
+                    {promoForm.image_url && <img src={promoForm.image_url} alt="" style={{ marginTop: 8, width: '100%', height: 100, objectFit: 'cover', borderRadius: 8 }} />}
+                  </div>
+                  <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                    <button type="button" onClick={() => setShowPromoForm(false)}
+                      style={{ padding: '9px 20px', background: 'rgba(255,255,255,0.07)', color: 'rgba(255,255,255,0.6)', border: 'none', borderRadius: 8, fontSize: 13, cursor: 'pointer' }}>Cancel</button>
+                    <button type="submit" disabled={promoSaving}
+                      style={{ padding: '9px 24px', background: '#e11d48', color: '#fff', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 700, cursor: 'pointer' }}>
+                      {promoSaving ? 'Saving...' : 'Save'}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {promos.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '40px 0', color: 'rgba(255,255,255,0.25)', fontSize: 13 }}>No promotions yet — add the first one</div>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: 16 }}>
+              {promos.map(p => {
+                const expiry = p.expires_at ? formatExpiry(p.expires_at) : null;
+                return (
+                  <div key={p.id} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 14, overflow: 'hidden', opacity: expiry?.expired ? 0.55 : 1 }}>
+                    {p.image_url && <img src={p.image_url} alt={p.title} style={{ width: '100%', height: 160, objectFit: 'cover' }} />}
+                    <div style={{ padding: '16px 18px' }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+                        <div style={{ flex: 1 }}>
+                          {p.discount_percent && (
+                            <div style={{ display: 'inline-block', background: 'rgba(225,29,72,0.2)', color: '#f87171', fontSize: 12, fontWeight: 800, padding: '2px 10px', borderRadius: 20, marginBottom: 6 }}>
+                              {p.discount_percent}% OFF
+                            </div>
+                          )}
+                          <div style={{ fontSize: 15, fontWeight: 700, color: '#fff' }}>{p.title}</div>
+                        </div>
+                        {user?.role === 'admin' && (
+                          <button onClick={() => handlePromoDelete(p.id)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 14, color: 'rgba(255,255,255,0.3)', marginLeft: 8 }}>🗑️</button>
+                        )}
+                      </div>
+                      {p.developer && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', marginBottom: 5 }}>🏗 {p.developer}</div>}
+                      {expiry && <div style={{ fontSize: 11, fontWeight: 600, color: expiry.expired ? '#f87171' : '#f59e0b', marginBottom: 6 }}>{expiry.expired ? '⚠️ Expired' : `⏰ Expires ${expiry.formatted}`}</div>}
+                      {p.description && <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 1.5, marginBottom: 6 }}>{p.description}</div>}
+                      {p.promo_details && <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', lineHeight: 1.5, background: 'rgba(0,0,0,0.2)', borderRadius: 6, padding: '7px 10px', whiteSpace: 'pre-wrap' }}>{p.promo_details}</div>}
+                      <div style={{ marginTop: 10, fontSize: 10, color: 'rgba(255,255,255,0.25)' }}>Added by {p.uploaded_by_name || 'Unknown'}</div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
       </main>
     </div>
   );

@@ -345,6 +345,7 @@ def promo_to_dict(p: AgentPromotion) -> dict:
         "expires_at": p.expires_at.isoformat() if p.expires_at else None,
         "image_url": p.image_url,
         "created_by": p.created_by,
+        "uploaded_by_name": p.creator.full_name if p.creator else None,
         "created_at": p.created_at.isoformat() if p.created_at else None,
     }
 
@@ -361,7 +362,7 @@ def list_promotions(
 @router.post("/promotions")
 def create_promotion(
     data: PromotionIn,
-    current_user=Depends(require_admin),
+    current_user=Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
     promo = AgentPromotion(**data.model_dump(), created_by=current_user.id)

@@ -77,7 +77,6 @@ export default function Layout() {
     { to: '/crm/referral-partners', label: 'Referral Partners', icon: '🤝' },
     ...(user?.role === 'admin' ? [
       { to: '/crm/customers', label: 'Customers', icon: '👥' },
-      { to: '/crm/users', label: 'Users', icon: '◎' },
     ] : []),
   ];
 
