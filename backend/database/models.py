@@ -445,6 +445,29 @@ class AgentPropertyPick(Base):
     agent = relationship("User", foreign_keys=[added_by])
 
 
+class CalendarEvent(Base):
+    __tablename__ = "calendar_events"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(300), nullable=False)
+    date = Column(String(20), nullable=False)          # YYYY-MM-DD
+    time_start = Column(String(10), nullable=True)     # HH:MM
+    time_end = Column(String(10), nullable=True)
+    location = Column(String(500), nullable=True)
+    hosted_by = Column(String(200), nullable=True)
+    description = Column(Text, nullable=True)
+    image_url = Column(String(500), nullable=True)
+    image_public_id = Column(String(300), nullable=True)
+    visibility = Column(String(20), default='everyone')  # 'everyone' or 'private'
+    status = Column(String(20), default='pending')       # 'pending', 'approved', 'rejected'
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    approved_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    creator = relationship("User", foreign_keys=[created_by])
+    approver = relationship("User", foreign_keys=[approved_by])
+
+
 class AIScrapeLog(Base):
     __tablename__ = "ai_scrape_logs"
 

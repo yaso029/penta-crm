@@ -56,6 +56,16 @@ const MODULES = [
     path: '/hr',
   },
   {
+    key: 'calendar',
+    icon: '📅',
+    title: 'Calendar',
+    subtitle: 'Events & Appointments',
+    desc: 'Team events, appointments and schedules. Submit or approve events with photos.',
+    bg: 'linear-gradient(135deg, #1e1b4b 0%, #13104a 100%)',
+    type: 'active',
+    path: '/calendar',
+  },
+  {
     key: 'accounting',
     icon: '💰',
     title: 'Accounting',

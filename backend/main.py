@@ -17,6 +17,7 @@ from backend.api import public_intake
 from backend.api import public_referral
 from backend.api import referral_applications
 from backend.api import hr
+from backend.api import calendar as calendar_routes
 import os
 
 app = FastAPI(title="Penta CRM API", version="2.0.0")
@@ -64,6 +65,9 @@ app.include_router(referral_applications.router)
 
 # HR module — admin only
 app.include_router(hr.router)
+
+# Calendar module — all authenticated users
+app.include_router(calendar_routes.router)
 
 
 def seed_admin():

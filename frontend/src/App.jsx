@@ -35,6 +35,8 @@ import ScrapeControl from './pages/aimodel/ScrapeControl';
 import PublicIntakePage from './pages/PublicIntakePage';
 import HRLayout from './components/HRLayout';
 import Employees from './pages/hr/Employees';
+import CalendarLayout from './components/CalendarLayout';
+import CalendarPage from './pages/calendar/CalendarPage';
 import PublicReferralPage from './pages/PublicReferralPage';
 import ReferralPartners from './pages/agents/ReferralPartners';
 import ReferralApplications from './pages/partnerships/ReferralApplications';
@@ -120,6 +122,11 @@ export default function App() {
         <Route path="match" element={<ClientMatcher />} />
         <Route path="intake" element={<IntakeAI />} />
         <Route path="scrape" element={<ScrapeControl />} />
+      </Route>
+
+      {/* Calendar module — all authenticated users */}
+      <Route path="/calendar" element={<PrivateRoute><CalendarLayout /></PrivateRoute>}>
+        <Route index element={<CalendarPage />} />
       </Route>
 
       {/* HR module — admin + hr_admin */}
