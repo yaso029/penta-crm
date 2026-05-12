@@ -22,9 +22,6 @@ import ClientReports from './pages/agents/ClientReports';
 import PropertyVault from './pages/agents/PropertyVault';
 import PropertyDetail from './pages/agents/PropertyDetail';
 import ListProperty from './pages/agents/ListProperty';
-import Events from './pages/agents/Events';
-import Videos from './pages/agents/Videos';
-import Promotions from './pages/agents/Promotions';
 import AIModelLayout from './components/AIModelLayout';
 import AIDashboard from './pages/aimodel/Dashboard';
 import OffPlanListings from './pages/aimodel/OffPlanListings';
@@ -39,6 +36,8 @@ import CalendarLayout from './components/CalendarLayout';
 import CalendarPage from './pages/calendar/CalendarPage';
 import PublicReferralPage from './pages/PublicReferralPage';
 import SettingsPage from './pages/SettingsPage';
+import VideosPage from './pages/VideosPage';
+import PromotionsPage from './pages/PromotionsPage';
 import ReferralPartners from './pages/agents/ReferralPartners';
 import ReferralApplications from './pages/partnerships/ReferralApplications';
 
@@ -93,17 +92,12 @@ export default function App() {
         <Route path="commissions" element={<Commissions />} />
       </Route>
 
-      {/* Agents Dashboard module — not for hr_admin */}
+      {/* Listings module — not for hr_admin */}
       <Route path="/agents" element={<PrivateRoute roles={['admin', 'team_leader', 'broker']}><AgentsLayout /></PrivateRoute>}>
         <Route index element={<AgentsDashboard />} />
         <Route path="properties" element={<PropertyVault />} />
         <Route path="properties/:id" element={<PropertyDetail />} />
         <Route path="list-property" element={<ListProperty />} />
-        <Route path="events" element={<Events />} />
-        <Route path="videos" element={<Videos />} />
-        <Route path="promotions" element={<Promotions />} />
-        <Route path="client-reports" element={<ClientReports />} />
-        <Route path="referral-partners" element={<ReferralPartners />} />
       </Route>
 
       {/* AI Model module — admin only */}
@@ -136,6 +130,8 @@ export default function App() {
 
       {/* Settings — all authenticated users */}
       <Route path="/settings" element={<PrivateRoute><SettingsPage /></PrivateRoute>} />
+      <Route path="/videos" element={<PrivateRoute><VideosPage /></PrivateRoute>} />
+      <Route path="/promotions" element={<PrivateRoute><PromotionsPage /></PrivateRoute>} />
 
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>

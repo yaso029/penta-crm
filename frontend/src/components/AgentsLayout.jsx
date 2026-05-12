@@ -7,13 +7,8 @@ const RED = '#dc2626';
 
 const navItems = [
   { to: '/agents', label: 'Dashboard', icon: '▦', exact: true },
-  { to: '/agents/client-reports', label: 'Client Reports', icon: '📋' },
-  { to: '/agents/referral-partners', label: 'Referral Partners', icon: '🤝' },
   { to: '/agents/properties', label: 'Property Vault', icon: '🏢' },
   { to: '/agents/list-property', label: 'List Property', icon: '➕' },
-  { to: '/agents/promotions', label: 'Promotions', icon: '🎯' },
-  { to: '/agents/events', label: 'Events', icon: '📅' },
-  { to: '/agents/videos', label: 'Video Resources', icon: '▶️' },
 ];
 
 export default function AgentsLayout() {
@@ -34,7 +29,7 @@ export default function AgentsLayout() {
             borderRadius: 6, padding: '2px 10px', fontSize: 10, fontWeight: 700,
             color: '#fca5a5', letterSpacing: 1.5, textTransform: 'uppercase',
           }}>
-            Agents Dashboard
+            Listings
           </div>
         </div>
 
@@ -82,7 +77,7 @@ export default function AgentsLayout() {
           display: 'flex', alignItems: 'center', padding: '0 28px',
           boxShadow: '0 1px 4px rgba(0,0,0,0.06)',
         }}>
-          <span style={{ fontSize: 13, color: '#888' }}>Agents Dashboard</span>
+          <span style={{ fontSize: 13, color: '#888' }}>Listings</span>
           <span style={{ marginLeft: 'auto', fontSize: 13, color: '#555', fontWeight: 600 }}>
             {user?.full_name}
           </span>
