@@ -60,8 +60,8 @@ export default function App() {
       {/* Landing — module selector */}
       <Route path="/" element={<PrivateRoute><Landing /></PrivateRoute>} />
 
-      {/* CRM module */}
-      <Route path="/crm" element={<PrivateRoute><Layout /></PrivateRoute>}>
+      {/* CRM module — not for hr_admin */}
+      <Route path="/crm" element={<PrivateRoute roles={['admin', 'team_leader', 'broker']}><Layout /></PrivateRoute>}>
         <Route index element={<DashboardPage />} />
         <Route path="kanban" element={<KanbanPage />} />
         <Route path="leads" element={<LeadsPage />} />
@@ -95,8 +95,8 @@ export default function App() {
         <Route path="commissions" element={<Commissions />} />
       </Route>
 
-      {/* Agents Dashboard module */}
-      <Route path="/agents" element={<PrivateRoute><AgentsLayout /></PrivateRoute>}>
+      {/* Agents Dashboard module — not for hr_admin */}
+      <Route path="/agents" element={<PrivateRoute roles={['admin', 'team_leader', 'broker']}><AgentsLayout /></PrivateRoute>}>
         <Route index element={<AgentsDashboard />} />
         <Route path="properties" element={<PropertyVault />} />
         <Route path="properties/:id" element={<PropertyDetail />} />

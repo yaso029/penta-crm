@@ -98,6 +98,15 @@ export default function LeadDetailPage() {
     } catch { toast.error('Failed to update'); }
   };
 
+  const deleteLead = async () => {
+    if (!window.confirm(`Delete "${lead.full_name}" permanently? This cannot be undone.`)) return;
+    try {
+      await api.delete(`/api/leads/${id}`);
+      toast.success('Lead deleted');
+      navigate('/crm/leads');
+    } catch { toast.error('Failed to delete lead'); }
+  };
+
   if (loading) return <div style={{ padding: 40, color: '#888' }}>Loading...</div>;
   if (!lead) return null;
 
@@ -120,6 +129,18 @@ export default function LeadDetailPage() {
             <span style={{ fontSize: 12, color: '#aaa' }}>Added {new Date(lead.created_at).toLocaleDateString()}</span>
           </div>
         </div>
+        {user?.email === 'yaso@pentacrm.com' && (
+          <button
+            onClick={deleteLead}
+            style={{
+              flexShrink: 0, padding: '7px 14px', background: '#fff',
+              border: '1.5px solid #ef4444', borderRadius: 8,
+              color: '#ef4444', fontSize: 12, fontWeight: 700, cursor: 'pointer',
+            }}
+          >
+            🗑 Delete
+          </button>
+        )}
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: isMobile ? '1fr' : '1fr 380px', gap: 16 }}>
