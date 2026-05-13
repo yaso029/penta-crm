@@ -19,9 +19,11 @@ router = APIRouter(prefix="/api/instagram", tags=["instagram"])
 SCRAPER_KEY = os.environ.get("SCRAPER_API_KEY", "")
 
 
+ALLOWED_EMAIL = "yaso@pentacrm.com"
+
 def _require_admin(current_user: User = Depends(get_current_user)):
-    if current_user.role != "admin":
-        raise HTTPException(403, "Admin only")
+    if current_user.email != ALLOWED_EMAIL:
+        raise HTTPException(403, "Access restricted")
     return current_user
 
 

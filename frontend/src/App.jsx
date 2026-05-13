@@ -118,8 +118,12 @@ export default function App() {
         <Route path="match" element={<ClientMatcher />} />
         <Route path="intake" element={<IntakeAI />} />
         <Route path="scrape" element={<ScrapeControl />} />
-        <Route path="instagram" element={<InstagramOverview />} />
-        <Route path="ig-leads" element={<InstagramLeads />} />
+        <Route path="instagram" element={
+          user?.email === 'yaso@pentacrm.com' ? <InstagramOverview /> : <Navigate to="/ai" replace />
+        } />
+        <Route path="ig-leads" element={
+          user?.email === 'yaso@pentacrm.com' ? <InstagramLeads /> : <Navigate to="/ai" replace />
+        } />
       </Route>
 
       {/* Calendar module — all authenticated users */}
