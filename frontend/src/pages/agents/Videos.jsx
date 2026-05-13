@@ -2,9 +2,9 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../../AuthContext';
 import api from '../../api';
 
-const CATEGORIES = ['training', 'project', 'marketing', 'other'];
-const CATEGORY_LABELS = { training: 'Training', project: 'Project', marketing: 'Marketing', other: 'Other' };
-const CATEGORY_COLORS = { training: '#16a34a', project: '#0891b2', marketing: '#f59e0b', other: '#888' };
+const CATEGORIES = ['developers', 'meetings', 'training', 'legal', 'other'];
+const CATEGORY_LABELS = { developers: 'Developers', meetings: 'Company Meetings', training: 'Training', legal: 'Legal', other: 'Other' };
+const CATEGORY_COLORS = { developers: '#0891b2', meetings: '#7c3aed', training: '#16a34a', legal: '#b45309', other: '#888' };
 
 function getYouTubeId(url) {
   if (!url) return null;
@@ -20,7 +20,7 @@ export default function Videos() {
   const [category, setCategory] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState(null);
-  const [form, setForm] = useState({ title: '', description: '', youtube_url: '', category: 'training' });
+  const [form, setForm] = useState({ title: '', description: '', youtube_url: '', category: 'developers' });
   const [saving, setSaving] = useState(false);
   const [playing, setPlaying] = useState(null);
 
