@@ -29,6 +29,8 @@ import SecondaryListings from './pages/aimodel/SecondaryListings';
 import ClientMatcher from './pages/aimodel/ClientMatcher';
 import IntakeAI from './pages/aimodel/IntakeAI';
 import ScrapeControl from './pages/aimodel/ScrapeControl';
+import InstagramOverview from './pages/aimodel/InstagramOverview';
+import InstagramLeads from './pages/aimodel/InstagramLeads';
 import PublicIntakePage from './pages/PublicIntakePage';
 import HRLayout from './components/HRLayout';
 import Employees from './pages/hr/Employees';
@@ -116,6 +118,8 @@ export default function App() {
         <Route path="match" element={<ClientMatcher />} />
         <Route path="intake" element={<IntakeAI />} />
         <Route path="scrape" element={<ScrapeControl />} />
+        <Route path="instagram" element={<InstagramOverview />} />
+        <Route path="ig-leads" element={<InstagramLeads />} />
       </Route>
 
       {/* Calendar module — all authenticated users */}

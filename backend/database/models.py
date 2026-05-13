@@ -514,3 +514,34 @@ class AIScrapeLog(Base):
     listings_updated = Column(Integer, default=0)
     status = Column(String(20), default="running")
     error_message = Column(Text, nullable=True)
+
+
+# ─── Instagram Lead Collection ────────────────────────────────────────────────
+
+class InstagramLead(Base):
+    __tablename__ = "instagram_leads"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(200), unique=True, index=True, nullable=False)
+    display_name = Column(String(300), nullable=True)
+    bio = Column(Text, nullable=True)
+    email = Column(String(200), nullable=True)
+    phone = Column(String(100), nullable=True)
+    whatsapp = Column(String(200), nullable=True)
+    website = Column(String(500), nullable=True)
+    follower_count = Column(Integer, nullable=True)
+    following_count = Column(Integer, nullable=True)
+    post_count = Column(Integer, nullable=True)
+    is_verified = Column(Boolean, default=False)
+    is_business_account = Column(Boolean, default=False)
+    profile_picture_url = Column(String(500), nullable=True)
+    search_keyword = Column(String(200), nullable=True)
+    lead_score = Column(Integer, default=0)
+    # not_contacted | contacted | responded | qualified | converted | rejected
+    contacted_status = Column(String(50), default="not_contacted")
+    notes = Column(Text, nullable=True)
+    crm_lead_id = Column(Integer, ForeignKey("leads.id"), nullable=True)
+    scraped_at = Column(DateTime, default=datetime.utcnow)
+    last_modified = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    crm_lead = relationship("Lead", foreign_keys=[crm_lead_id])

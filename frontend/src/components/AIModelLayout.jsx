@@ -11,6 +11,8 @@ const navItems = [
   { to: '/ai/match', label: 'Client Matcher', icon: '🎯' },
   { to: '/ai/intake', label: 'Intake AI', icon: '🤖' },
   { to: '/ai/scrape', label: 'Scrape Control', icon: '⚙️' },
+  { to: '/ai/instagram', label: 'Instagram Leads', icon: '📸' },
+  { to: '/ai/ig-leads', label: 'Lead Database', icon: '👥' },
 ];
 
 export default function AIModelLayout() {
